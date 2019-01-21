@@ -1,6 +1,7 @@
+#define ESPALEXA_ASYNC
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <fauxmoESP.h>
+#include <Espalexa.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 
@@ -11,7 +12,6 @@
 #define NUM_LEDS    24
 CRGB leds[NUM_LEDS];
 #define FRAMES_PER_SECOND  120
-int led_brightness = 255;
 uint8_t gHue = 0; // rotating "base color" on FastLED
 
 #define LIGHT_SW D0
@@ -23,9 +23,30 @@ bool MUSIC_SW = HIGH;
 const char ssid[] = "***REMOVED***!!! OLD";
 const char pass[] = "donotusee89a";
 AsyncWebServer server(9999);
-fauxmoESP fauxmo;
+Espalexa espalexa;
+EspalexaDevice* desk_led;
+EspalexaDevice* music_led;
+
+void deskLED_callback(uint8_t brightness, uint32_t rgb) {
+
+  // analog LEDs
+  analogWrite(LIGHT_SW, brightness);
+  
+  // digital LEDs
+  if (brightness != 0) {
+    FastLED.setBrightness(brightness);
+  }
+}
+
+void musicLED_callback(uint8_t brightness) {
+  
+  bool state;
+  if (brightness) state = true; else state = false;
+  MUSIC_SW = state ? HIGH : LOW;
+}
 
 void setup() {
+  analogWriteRange(255);
   pinMode(LIGHT_SW, OUTPUT);
   pinMode(MUSIC_TRIG, INPUT_PULLUP);
   pinMode(MUSIC_EXPORT, OUTPUT);
@@ -40,33 +61,19 @@ void setup() {
   WiFi.mode(WIFI_STA);
   wifi_check();
 
-  // fauxmo
-  fauxmo.addDevice("Desk LED");
-  fauxmo.addDevice("Music LED");
-  fauxmo.enable(true);
-  fauxmo.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
-
-    if (strcmp(device_name,"Desk LED") == 0) {
-      // analog LEDs
-      digitalWrite(LIGHT_SW, state ? HIGH : LOW);
-      // digital LEDs
-      if (state == 1 && value != 0) {
-        led_brightness = int(value);
-        FastLED.setBrightness(led_brightness);
-      }
-    }
-    if (strcmp(device_name, "Music LED") == 0) {
-      MUSIC_SW = state ? HIGH : LOW;
-    }
-    
-  });
+  //espalexa
+  desk_led = new EspalexaDevice("Desk LED", deskLED_callback, 0);
+  music_led = new EspalexaDevice("Music LED", musicLED_callback, 255);
+  espalexa.addDevice(desk_led);
+  espalexa.addDevice(music_led);
+  espalexa.begin();
 
   // Web Server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String read1 = digitalRead(LIGHT_SW) ? "ON<span style='color:white;'>1</span>" : "OFF";
-    String read2 = digitalRead(LIGHT_SW) ? "off" : "on";
-    String read3 = MUSIC_SW ? "ON<span style='color:white;'>1</span>" : "OFF";
-    String read4 = MUSIC_SW ? "off" : "on";
+    String read1 = desk_led->getValue() ? String(round(desk_led->getValue()/255*100)) + "%" : "OFF";
+    String read2 = desk_led->getValue() ? "off" : "on";
+    String read3 = music_led->getValue() ? String(round(music_led->getValue()/255*100)) + "%" : "OFF";
+    String read4 = music_led->getValue() ? "off" : "on";
     String response_html = "";
     response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
     response_html += "<style>@font-face { font-family: rubrik; src: url(https://edev.i.lithium.com/html/assets/Rubrik_Regular.otf); }";
@@ -83,31 +90,35 @@ void setup() {
   });
 
   server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    fauxmo.setState("Desk LED", true, 0);
+    desk_led->setValue(desk_led->getLastValue());
+    deskLED_callback(desk_led->getLastValue(), desk_led->getColorRGB());
     request->redirect("/");
   });
 
   server.on("/led/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    fauxmo.setState("Desk LED", false, 0);
+    desk_led->setValue(0);
+    deskLED_callback(0, desk_led->getColorRGB());
     request->redirect("/");
   });
 
   server.on("/led/status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(digitalRead(LIGHT_SW)));
+    request->send(200, "text/plain", String(desk_led->getValue() ? 1 : 0));
   });
 
   server.on("/music/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    fauxmo.setState("Music LED", true, 0);
+    music_led->setValue(music_led->getLastValue());
+    musicLED_callback(music_led->getLastValue());
     request->redirect("/");
   });
 
   server.on("/music/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    fauxmo.setState("Music LED", false, 0);
+    music_led->setValue(0);
+    musicLED_callback(0);
     request->redirect("/");
   });
 
   server.on("/music/status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(MUSIC_SW));
+    request->send(200, "text/plain", String(music_led->getValue() ? 1 : 0));
   });
 
   server.onNotFound(notFound);
@@ -151,49 +162,41 @@ bool wifi_check() {
   return true;
 }
 
-/*
-enum _mode {
-  GETDEV,
-  NONE,
-  LEDON,
-  LEDOFF,
-  MUSICON,
-  MUSICOFF
-};
-*/
-
 void loop() {
-  fauxmo.handle();
-
-  
-  if (MUSIC_SW && !digitalRead(MUSIC_TRIG))
-    digitalWrite(MUSIC_EXPORT, HIGH);
-  else digitalWrite(MUSIC_EXPORT, LOW);
-
+  espalexa.loop();
 
   // Digital LEDs
-  if (digitalRead(MUSIC_EXPORT)) {
+  if (music_led->getValue() && !digitalRead(MUSIC_TRIG)) { // music led
 
-    // Music LED
+    // Analog
+    digitalWrite(MUSIC_EXPORT, HIGH);
+
+    // Digital
     for (int i=0; i<NUM_LEDS; i++) {
     leds[i] = CRGB::White;
     }
     FastLED.setBrightness(96);
     FastLED.show();
     FastLED.delay(1000/FRAMES_PER_SECOND);
-    FastLED.setBrightness(led_brightness);
+    FastLED.setBrightness(desk_led->getLastValue());
     
-  } else if (digitalRead(LIGHT_SW)) {
+  } else if (desk_led->getValue()) { // normal led
 
-    // Rainbow
+    // Analog
+    digitalWrite(MUSIC_EXPORT, LOW);
+
+    // Digital, Rainbow
     fill_rainbow(leds, NUM_LEDS, gHue, 7);
     FastLED.show();
     FastLED.delay(1000/FRAMES_PER_SECOND);
     EVERY_N_MILLISECONDS( 20 ) { gHue++; }
     
-  } else {
+  } else { // off
 
-    // Lights Off
+    // Analog
+    digitalWrite(MUSIC_EXPORT, LOW);
+
+    // Digital
     for (int i=0; i<NUM_LEDS; i++) {
     leds[i] = CRGB::Black;
     }
