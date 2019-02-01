@@ -17,7 +17,7 @@ uint8_t gHue = 0; // rotating "base color" on FastLED
 #define LIGHT_SW D0
 #define MUSIC_TRIG D2
 #define MUSIC_EXPORT D3
-bool MUSIC_SW = HIGH;
+uint8_t music_brightness = 255;
 
 // WIFI
 const char ssid[] = "WAZZUP!!! OLD";
@@ -39,10 +39,11 @@ void deskLED_callback(uint8_t brightness, uint32_t rgb) {
 }
 
 void musicLED_callback(uint8_t brightness) {
-  
-  bool state;
-  if (brightness) state = true; else state = false;
-  MUSIC_SW = state ? HIGH : LOW;
+
+  // analog LEDs
+  if (brightness < 96) {
+    music_brightness = brightness / 96 * 255;
+  } else music_brightness = 255;
 }
 
 void setup() {
@@ -63,16 +64,16 @@ void setup() {
 
   //espalexa
   desk_led = new EspalexaDevice("Desk LED", deskLED_callback, 0);
-  music_led = new EspalexaDevice("Music LED", musicLED_callback, 255);
+  music_led = new EspalexaDevice("Music LED", musicLED_callback, 96);
   espalexa.addDevice(desk_led);
   espalexa.addDevice(music_led);
   espalexa.begin();
 
   // Web Server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String read1 = desk_led->getValue() ? String(round(desk_led->getValue()/255*100)) + "%" : "OFF";
+    String read1 = desk_led->getValue() ? String(round(desk_led->getValue()*100/255)) + "%" : "OFF";
     String read2 = desk_led->getValue() ? "off" : "on";
-    String read3 = music_led->getValue() ? String(round(music_led->getValue()/255*100)) + "%" : "OFF";
+    String read3 = music_led->getValue() ? String(round(music_led->getValue()*100/255)) + "%" : "OFF";
     String read4 = music_led->getValue() ? "off" : "on";
     String response_html = "";
     response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
@@ -90,8 +91,20 @@ void setup() {
   });
 
   server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    desk_led->setValue(desk_led->getLastValue());
-    deskLED_callback(desk_led->getLastValue(), desk_led->getColorRGB());
+
+    int brightness = -1;
+    if (request->hasParam("brightness")) {
+      brightness = request->getParam("brightness")->value().toInt();
+      brightness = brightness*255/100;
+      if (brightness <= 0 || brightness >= 256) {
+        request->redirect("/");
+      }
+    } else {
+      brightness = desk_led->getLastValue();
+    }
+    
+    desk_led->setValue(brightness);
+    deskLED_callback(brightness, desk_led->getColorRGB());
     request->redirect("/");
   });
 
@@ -105,9 +118,24 @@ void setup() {
     request->send(200, "text/plain", String(desk_led->getValue() ? 1 : 0));
   });
 
+  server.on("/led/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", String(desk_led->getValue()*100/255));
+  });
+
   server.on("/music/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    music_led->setValue(music_led->getLastValue());
-    musicLED_callback(music_led->getLastValue());
+    int brightness = -1;
+    if (request->hasParam("brightness")) {
+      brightness = request->getParam("brightness")->value().toInt();
+      brightness = brightness*255/100;
+      if (brightness <= 0 || brightness >= 256) {
+        request->redirect("/");
+      }
+    } else {
+      brightness = music_led->getLastValue();
+    }
+    
+    music_led->setValue(brightness);
+    musicLED_callback(brightness);
     request->redirect("/");
   });
 
@@ -119,6 +147,10 @@ void setup() {
 
   server.on("/music/status", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", String(music_led->getValue() ? 1 : 0));
+  });
+
+  server.on("/music/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", String(music_led->getValue()*100/255));
   });
 
   server.onNotFound(notFound);
@@ -169,13 +201,13 @@ void loop() {
   if (music_led->getValue() && !digitalRead(MUSIC_TRIG)) { // music led
 
     // Analog
-    digitalWrite(MUSIC_EXPORT, HIGH);
+    analogWrite(MUSIC_EXPORT, music_brightness);
 
     // Digital
     for (int i=0; i<NUM_LEDS; i++) {
     leds[i] = CRGB::White;
     }
-    FastLED.setBrightness(96);
+    FastLED.setBrightness(music_led->getLastValue());
     FastLED.show();
     FastLED.delay(1000/FRAMES_PER_SECOND);
     FastLED.setBrightness(desk_led->getLastValue());
