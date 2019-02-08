@@ -12,13 +12,13 @@
 #define COLOR_ORDER GRB
 #define NUM_LEDS    24
 CRGB leds[NUM_LEDS];
-#define FRAMES_PER_SECOND  240
+#define FRAMES_PER_SECOND  120
 uint8_t gHue = 0; // rotating "base color" on FastLED
 
 #define LIGHT_SW D0
 #define MUSIC_TRIG D2
 #define MUSIC_EXPORT D3
-uint8_t music_brightness = 255;
+uint8_t music_brightness;
 
 // WIFI
 const char ssid[] = "***REMOVED***!!! OLD";
@@ -80,17 +80,17 @@ String colorinttohexstr(uint8_t color) {
   return a;
 }
 
-void rgbToHsl(uint8_t r, uint8_t g, uint8_t b, int* _h, int* _s, int* _l) {
+void rgbToHsl(uint8_t r, uint8_t g, uint8_t b, int* _h, int* _s, int* _br) {
     r /= 255, g /= 255, b /= 255;
     int _max = max(max(r, g), b);
     int _min = min(min(r, g), b);
-    int h, s, l = (_max + _min) / 2;
+    int h, s, br = (_max + _min) / 2;
 
     if(_max == _min) {
         h = s = 0; // achromatic
     } else {
         int d = _max - _min;
-        s = l > 0.5 ? d / (2 - _max - _min) : d / (_max + _min);
+        s = br > 0.5 ? d / (2 - _max - _min) : d / (_max + _min);
         if (_max == r)      h = (g - b) / d + (g < b ? 6 : 0);
         else if (_max == g) h = (b - r) / d + 2;
         else if (_max == b) h = (r - g) / d + 4;
@@ -99,7 +99,7 @@ void rgbToHsl(uint8_t r, uint8_t g, uint8_t b, int* _h, int* _s, int* _l) {
 
     *_h = h;
     *_s = s;
-    *_l = l;
+    *_br = br;
 }
 
 void deskLED_callback(uint8_t brightness, uint32_t rgb) {
@@ -263,6 +263,8 @@ void setup() {
 void loop() {
   espalexa.loop();
 
+  static bool last_music;
+
   // Digital LEDs
   if (music_led->getValue() && !digitalRead(MUSIC_TRIG)) { // music led
 
@@ -273,19 +275,25 @@ void loop() {
     for (int i=0; i<NUM_LEDS; i++) {
     leds[i] = CRGB::White;
     }
+
+    // check if delay is needed
+    if (last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
+    last_music = true;
     FastLED.setBrightness(music_led->getLastValue());
     FastLED.show();
-    FastLED.setBrightness(desk_led->getLastValue());
     
   } else if (desk_led->getValue()) { // normal led
 
     // Analog
     digitalWrite(MUSIC_EXPORT, LOW);
 
+    // check if delay is needed
+    if (!last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
+    last_music = false;
     // Digital, Rainbow
     fill_rainbow(leds, NUM_LEDS, gHue, 7);
+    FastLED.setBrightness(desk_led->getLastValue());
     FastLED.show();
-    FastLED.delay(1000/FRAMES_PER_SECOND);
     EVERY_N_MILLISECONDS( 20 ) { gHue++; }
     
   } else { // off
