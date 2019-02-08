@@ -1,4 +1,5 @@
 #define ESPALEXA_ASYNC
+#define FASTLED_INTERNAL
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <Espalexa.h>
@@ -11,7 +12,7 @@
 #define COLOR_ORDER GRB
 #define NUM_LEDS    24
 CRGB leds[NUM_LEDS];
-#define FRAMES_PER_SECOND  120
+#define FRAMES_PER_SECOND  240
 uint8_t gHue = 0; // rotating "base color" on FastLED
 
 #define LIGHT_SW D0
@@ -26,6 +27,80 @@ AsyncWebServer server(9999);
 Espalexa espalexa;
 EspalexaDevice* desk_led;
 EspalexaDevice* music_led;
+
+void notFound(AsyncWebServerRequest *request) {
+    request->redirect("/");
+}
+
+String ip2String(const IPAddress& ipAddress) {
+  return String(ipAddress[0]) + String(".") +\
+  String(ipAddress[1]) + String(".") +\
+  String(ipAddress[2]) + String(".") +\
+  String(ipAddress[3]); 
+}
+
+bool isValidIP(const IPAddress& ipAddress) {
+  return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
+}
+
+long attempt_connect_timer;
+bool wifi_check() {
+
+  if (WiFi.status() != WL_CONNECTED && millis()-attempt_connect_timer >= 10000) {
+    attempt_connect_timer = millis();
+    WiFi.begin(ssid, pass);
+    return false;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+
+  IPAddress ip = WiFi.localIP();
+  if (!isValidIP(ip)) {
+    return false;
+  }
+  
+  return true;
+}
+
+String colorinttohexstr(uint8_t color) {
+  String a = String(color, HEX);
+  if (a.length() == 0) {
+    return "00";
+  }
+
+  if (a.length() == 1) {
+    return "0" + a;
+  }
+
+  if (a.length() > 2) {
+    return "00";
+  }
+  return a;
+}
+
+void rgbToHsl(uint8_t r, uint8_t g, uint8_t b, int* _h, int* _s, int* _l) {
+    r /= 255, g /= 255, b /= 255;
+    int _max = max(max(r, g), b);
+    int _min = min(min(r, g), b);
+    int h, s, l = (_max + _min) / 2;
+
+    if(_max == _min) {
+        h = s = 0; // achromatic
+    } else {
+        int d = _max - _min;
+        s = l > 0.5 ? d / (2 - _max - _min) : d / (_max + _min);
+        if (_max == r)      h = (g - b) / d + (g < b ? 6 : 0);
+        else if (_max == g) h = (b - r) / d + 2;
+        else if (_max == b) h = (r - g) / d + 4;
+        h /= 6;
+    }
+
+    *_h = h;
+    *_s = s;
+    *_l = l;
+}
 
 void deskLED_callback(uint8_t brightness, uint32_t rgb) {
 
@@ -64,7 +139,7 @@ void setup() {
 
   //espalexa
   desk_led = new EspalexaDevice("Desk LED", deskLED_callback, 0);
-  music_led = new EspalexaDevice("Music LED", musicLED_callback, 96);
+  music_led = new EspalexaDevice("Music LED", musicLED_callback, 102);
   espalexa.addDevice(desk_led);
   espalexa.addDevice(music_led);
   espalexa.begin();
@@ -91,6 +166,22 @@ void setup() {
   });
 
   server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    
+    if (request->hasParam("color")) {
+      String color = request->getParam("color")->value();
+      char color_arr[color.length()];
+      color.toCharArray(color_arr, color.length());
+      uint32_t rgb = strtol(color_arr, NULL, 16);
+      uint8_t r = (rgb >> 16) & 0xFF;
+      uint8_t g = (rgb >>  8) & 0xFF;
+      uint8_t b = rgb & 0xFF;
+      int h, s, l;
+      rgbToHsl(r, g, b, &h, &s, &l);
+      desk_led->setColor(h, s);
+      deskLED_callback(desk_led->getLastValue(), rgb);
+      request->redirect("/");
+      return;
+    }
 
     int brightness = -1;
     if (request->hasParam("brightness")) {
@@ -120,6 +211,17 @@ void setup() {
 
   server.on("/led/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", String(desk_led->getValue()*100/255));
+  });
+
+  server.on("/led/color", HTTP_GET, [](AsyncWebServerRequest *request) {
+    
+    uint32_t rgb = desk_led->getColorRGB();
+    uint8_t r = (rgb >> 16) & 0xFF;
+    uint8_t g = (rgb >>  8) & 0xFF;
+    uint8_t b = rgb & 0xFF;
+    String color = colorinttohexstr(r) + colorinttohexstr(g) + colorinttohexstr(b);
+    
+    request->send(200, "text/plain", color);
   });
 
   server.on("/music/on", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -158,42 +260,6 @@ void setup() {
 
 }
 
-void notFound(AsyncWebServerRequest *request) {
-    request->redirect("/");
-}
-
-String ip2String(const IPAddress& ipAddress) {
-  return String(ipAddress[0]) + String(".") +\
-  String(ipAddress[1]) + String(".") +\
-  String(ipAddress[2]) + String(".") +\
-  String(ipAddress[3]); 
-}
-
-bool isValidIP(const IPAddress& ipAddress) {
-  return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
-}
-
-long attempt_connect_timer;
-bool wifi_check() {
-
-  if (WiFi.status() != WL_CONNECTED && millis()-attempt_connect_timer >= 10000) {
-    attempt_connect_timer = millis();
-    WiFi.begin(ssid, pass);
-    return false;
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-
-  IPAddress ip = WiFi.localIP();
-  if (!isValidIP(ip)) {
-    return false;
-  }
-  
-  return true;
-}
-
 void loop() {
   espalexa.loop();
 
@@ -209,7 +275,6 @@ void loop() {
     }
     FastLED.setBrightness(music_led->getLastValue());
     FastLED.show();
-    FastLED.delay(1000/FRAMES_PER_SECOND);
     FastLED.setBrightness(desk_led->getLastValue());
     
   } else if (desk_led->getValue()) { // normal led
