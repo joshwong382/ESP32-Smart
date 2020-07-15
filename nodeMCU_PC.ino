@@ -1,143 +1,52 @@
 #define ESPALEXA_ASYNC
 #define FASTLED_INTERNAL
+
+#define REDPIN D6
+#define GREENPIN D7
+#define BLUEPIN D8
+#define MUSIC_TRIG D2
+
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 #include <Espalexa.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
+#include <RGBConverter.h>
+#include "helper.h"
 
 // FastLED
 #define DATA_PIN    5
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 #define NUM_LEDS    24
-CRGB leds[NUM_LEDS];
 #define FRAMES_PER_SECOND  120
+CRGB leds[NUM_LEDS];
 uint8_t gHue = 0; // rotating "base color" on FastLED
 
-#define LIGHT_SW D0
-#define MUSIC_TRIG D2
-#define MUSIC_EXPORT D3
-uint8_t music_brightness;
-
 // WIFI
-const char ssid[] = "***REMOVED***!!! OLD";
-const char pass[] = "donotusee89a";
+char ssid[] = "***REMOVED******REMOVED***";
+char pass[] = "***REMOVED***";
 AsyncWebServer server(9999);
 Espalexa espalexa;
 EspalexaDevice* desk_led;
 EspalexaDevice* music_led;
 
-void notFound(AsyncWebServerRequest *request) {
-    request->redirect("/");
-}
-
-String ip2String(const IPAddress& ipAddress) {
-  return String(ipAddress[0]) + String(".") +\
-  String(ipAddress[1]) + String(".") +\
-  String(ipAddress[2]) + String(".") +\
-  String(ipAddress[3]); 
-}
-
-bool isValidIP(const IPAddress& ipAddress) {
-  return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
-}
-
-long attempt_connect_timer;
-bool wifi_check() {
-
-  if (WiFi.status() != WL_CONNECTED && millis()-attempt_connect_timer >= 10000) {
-    attempt_connect_timer = millis();
-    WiFi.begin(ssid, pass);
-    return false;
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-
-  IPAddress ip = WiFi.localIP();
-  if (!isValidIP(ip)) {
-    return false;
-  }
-  
-  return true;
-}
-
-String colorinttohexstr(uint8_t color) {
-  String a = String(color, HEX);
-  if (a.length() == 0) {
-    return "00";
-  }
-
-  if (a.length() == 1) {
-    return "0" + a;
-  }
-
-  if (a.length() > 2) {
-    return "00";
-  }
-  return a;
-}
-
-void rgbToHsl(uint8_t r, uint8_t g, uint8_t b, int* _h, int* _s, int* _br) {
-    r /= 255, g /= 255, b /= 255;
-    int _max = max(max(r, g), b);
-    int _min = min(min(r, g), b);
-    int h, s, br = (_max + _min) / 2;
-
-    if(_max == _min) {
-        h = s = 0; // achromatic
-    } else {
-        int d = _max - _min;
-        s = br > 0.5 ? d / (2 - _max - _min) : d / (_max + _min);
-        if (_max == r)      h = (g - b) / d + (g < b ? 6 : 0);
-        else if (_max == g) h = (b - r) / d + 2;
-        else if (_max == b) h = (r - g) / d + 4;
-        h /= 6;
-    }
-
-    *_h = h;
-    *_s = s;
-    *_br = br;
-}
-
-void deskLED_callback(uint8_t brightness, uint32_t rgb) {
-
-  // analog LEDs
-  analogWrite(LIGHT_SW, brightness);
-  
-  // digital LEDs
-  if (brightness != 0) {
-    FastLED.setBrightness(brightness);
-  }
-}
-
-void musicLED_callback(uint8_t brightness) {
-
-  // analog LEDs
-  if (brightness < 96) {
-    music_brightness = brightness / 96 * 255;
-  } else music_brightness = 255;
-}
-
 void setup() {
+  Serial.begin(115200);
   analogWriteRange(255);
-  pinMode(LIGHT_SW, OUTPUT);
   pinMode(MUSIC_TRIG, INPUT_PULLUP);
-  pinMode(MUSIC_EXPORT, OUTPUT);
-
-  // SIGNALS SETUP
-  digitalWrite(LIGHT_SW, LOW);
-  digitalWrite(MUSIC_EXPORT, LOW);
+  pinMode(REDPIN, OUTPUT);
+  pinMode(GREENPIN, OUTPUT);
+  pinMode(BLUEPIN, OUTPUT);
 
   // FastLED
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
+  // Wi-Fi
   WiFi.mode(WIFI_STA);
-  wifi_check();
+  WiFi.setAutoReconnect(true);
+  wifi_check(ssid, pass);
 
-  //espalexa
+  // ESPAlexa
   desk_led = new EspalexaDevice("Desk LED", deskLED_callback, 0);
   music_led = new EspalexaDevice("Music LED", musicLED_callback, 102);
   espalexa.addDevice(desk_led);
@@ -145,10 +54,92 @@ void setup() {
   espalexa.begin();
 
   // Web Server
+  setAllWebServerPages();
+  server.begin();
+}
+
+void loop() {
+
+  // Check Wifi
+  wifi_check(ssid, pass);
+  espalexa.loop();
+  doRGB();
+}
+
+void doRGB() {
+
+  static bool last_music;
+
+  // Digital LEDs
+  if (music_led->getValue() && !digitalRead(MUSIC_TRIG)) { // music led
+
+    // Analog
+    setAnalogRGB(255, 255, 255, music_led->getLastValue(), REDPIN, GREENPIN, BLUEPIN);
+
+    // Digital
+    for (int i=0; i<NUM_LEDS; i++) {
+    leds[i] = CRGB::White;
+    }
+
+    // check if delay is needed
+    if (last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
+    last_music = true;
+    FastLED.setBrightness(music_led->getLastValue());
+    FastLED.show();
+    
+  } else if (desk_led->getValue()) { // normal led
+
+    // check if delay is needed
+    if (!last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
+    last_music = false;
+    // Digital if white then rainbow
+    if (desk_led->getRGB() == 0xffffff) {
+      fill_rainbow(leds, NUM_LEDS, gHue, 8); //digital
+      CRGB rgb;
+      hsv2rgb_rainbow(CHSV(gHue,255,255), rgb);
+      setAnalogRGB(rgb, desk_led->getValue(), REDPIN, GREENPIN, BLUEPIN); // analog
+    }
+    else {
+      uint16_t h = desk_led->getHue();
+      uint8_t s = desk_led->getSat();
+      uint8_t v = desk_led->getValue();
+      for (int i=0; i<NUM_LEDS; i++) {
+        leds[i] = CHSV(h*255/65535, s, v);
+      }
+      RGBConverter cvt;
+      byte rgb[3];
+      cvt.hsvToRgb(double(h)/65535, double(s)/255, double(v)/255, rgb);
+      setAnalogRGB(rgb[0], rgb[2], rgb[1], 255, REDPIN, GREENPIN, BLUEPIN);
+    }
+    FastLED.setBrightness(desk_led->getLastValue());
+    FastLED.show();
+    EVERY_N_MILLISECONDS( 50 ) { gHue++; }
+    
+  } else { // off
+
+    // Analog
+    setAnalogRGB(0, 0, 0, 0, REDPIN, GREENPIN, BLUEPIN);
+
+    // Digital
+    for (int i=0; i<NUM_LEDS; i++) {
+      leds[i] = CRGB::Black;
+    }
+    FastLED.show();
+    
+  }
+}
+
+// Web Server
+void setAllWebServerPages() {
+
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect("/");
+  });
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String read1 = desk_led->getValue() ? String(round(desk_led->getValue()*100/255)) + "%" : "OFF";
+    String read1 = desk_led->getValue() ? String(rgbtopercent(desk_led->getValue())) + "%" : "OFF";
     String read2 = desk_led->getValue() ? "off" : "on";
-    String read3 = music_led->getValue() ? String(round(music_led->getValue()*100/255)) + "%" : "OFF";
+    String read3 = music_led->getValue() ? String(rgbtopercent(music_led->getValue())) + "%" : "OFF";
     String read4 = music_led->getValue() ? "off" : "on";
     String response_html = "";
     response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
@@ -165,28 +156,48 @@ void setup() {
     request->send(response);
   });
 
+  server.on("/metrics", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String response_html = "# Prometheus Metrics";
+    response_html += "\ndesk_led " + String(rgbtopercent(desk_led->getValue()));
+    response_html += "\nmusic_led " + String(rgbtopercent(music_led->getValue()));
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", response_html);
+    request->send(response);
+  });
+
   server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     
     if (request->hasParam("color")) {
       String color = request->getParam("color")->value();
-      char color_arr[color.length()];
-      color.toCharArray(color_arr, color.length());
+      char color_arr[7];
+      color.toCharArray(color_arr, 7);
       uint32_t rgb = strtol(color_arr, NULL, 16);
       uint8_t r = (rgb >> 16) & 0xFF;
       uint8_t g = (rgb >>  8) & 0xFF;
       uint8_t b = rgb & 0xFF;
-      int h, s, l;
-      rgbToHsl(r, g, b, &h, &s, &l);
-      desk_led->setColor(h, s);
-      deskLED_callback(desk_led->getLastValue(), rgb);
-      request->redirect("/");
+      
+      double hsv[3];
+      RGBConverter cvt;
+      cvt.rgbToHsv(r, g, b, hsv);
+      uint8_t br = hsv[2]*255;
+      uint8_t sat = hsv[1]*255;
+      uint16_t hue = hsv[0]*65535;
+      
+      desk_led->setColor(hue, sat);
+      desk_led->setValue(br);
+      deskLED_callback(br, desk_led->getRGB());
+      
+      AsyncWebServerResponse *response = request->beginResponse(302);
+      response->addHeader("RGB: R: ", colorinttohexstr(r) + "G: " + colorinttohexstr(g) + "B: " + colorinttohexstr(b));
+      response->addHeader("HSV", String(hue) + "," + String(sat) + "," + String(br));
+      response->addHeader("Location", "/");
+      request->send(response);
       return;
     }
 
     int brightness = -1;
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
-      brightness = brightness*255/100;
+      brightness = percenttorgb(brightness);
       if (brightness <= 0 || brightness >= 256) {
         request->redirect("/");
       }
@@ -195,13 +206,13 @@ void setup() {
     }
     
     desk_led->setValue(brightness);
-    deskLED_callback(brightness, desk_led->getColorRGB());
+    deskLED_callback(brightness, desk_led->getRGB());
     request->redirect("/");
   });
 
   server.on("/led/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     desk_led->setValue(0);
-    deskLED_callback(0, desk_led->getColorRGB());
+    deskLED_callback(0, desk_led->getRGB());
     request->redirect("/");
   });
 
@@ -210,16 +221,25 @@ void setup() {
   });
 
   server.on("/led/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led->getValue()*100/255));
+    request->send(200, "text/plain", String(rgbtopercent(desk_led->getValue())));
   });
 
   server.on("/led/color", HTTP_GET, [](AsyncWebServerRequest *request) {
     
-    uint32_t rgb = desk_led->getColorRGB();
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >>  8) & 0xFF;
-    uint8_t b = rgb & 0xFF;
-    String color = colorinttohexstr(r) + colorinttohexstr(g) + colorinttohexstr(b);
+    //uint32_t rgb = desk_led->getColorRGB();
+    //uint8_t r = (rgb >> 16) & 0xFF;
+    //uint8_t g = (rgb >>  8) & 0xFF;
+    //uint8_t b = rgb & 0xFF;
+
+    uint16_t h = desk_led->getHue();
+    uint8_t s = desk_led->getSat();
+    uint8_t v = desk_led->getValue();
+    
+    String hsv = String(h) + " " + String(s) + " " + String(v);
+    RGBConverter cvt;
+    byte rgb[3];
+    cvt.hsvToRgb(round(double(h)/65535), round(double(s)/255), round(double(v)/255), rgb);
+    String color = colorinttohexstr(rgb[0]) + colorinttohexstr(rgb[1]) + colorinttohexstr(rgb[2]);
     
     request->send(200, "text/plain", color);
   });
@@ -228,7 +248,7 @@ void setup() {
     int brightness = -1;
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
-      brightness = brightness*255/100;
+      brightness = percenttorgb(brightness);
       if (brightness <= 0 || brightness >= 256) {
         request->redirect("/");
       }
@@ -252,60 +272,6 @@ void setup() {
   });
 
   server.on("/music/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led->getValue()*100/255));
+    request->send(200, "text/plain", String(rgbtopercent(music_led->getValue())));
   });
-
-  server.onNotFound(notFound);
-  server.begin();
-
-}
-
-void loop() {
-  espalexa.loop();
-
-  static bool last_music;
-
-  // Digital LEDs
-  if (music_led->getValue() && !digitalRead(MUSIC_TRIG)) { // music led
-
-    // Analog
-    analogWrite(MUSIC_EXPORT, music_brightness);
-
-    // Digital
-    for (int i=0; i<NUM_LEDS; i++) {
-    leds[i] = CRGB::White;
-    }
-
-    // check if delay is needed
-    if (last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
-    last_music = true;
-    FastLED.setBrightness(music_led->getLastValue());
-    FastLED.show();
-    
-  } else if (desk_led->getValue()) { // normal led
-
-    // Analog
-    digitalWrite(MUSIC_EXPORT, LOW);
-
-    // check if delay is needed
-    if (!last_music) FastLED.delay(1000/FRAMES_PER_SECOND);
-    last_music = false;
-    // Digital, Rainbow
-    fill_rainbow(leds, NUM_LEDS, gHue, 7);
-    FastLED.setBrightness(desk_led->getLastValue());
-    FastLED.show();
-    EVERY_N_MILLISECONDS( 20 ) { gHue++; }
-    
-  } else { // off
-
-    // Analog
-    digitalWrite(MUSIC_EXPORT, LOW);
-
-    // Digital
-    for (int i=0; i<NUM_LEDS; i++) {
-    leds[i] = CRGB::Black;
-    }
-    FastLED.show();
-    
-  }
 }
