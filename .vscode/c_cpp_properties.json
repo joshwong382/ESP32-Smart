@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Arduino",
+            "includePath": [
+            ],
+            "forcedInclude": [],
+            "browse": {
+                "path": [
+                    "/Users/Joshua/Library/Arduino15/packages/esp8266/tools",
+                    "/Users/Joshua/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.2/cores/esp8266",
+                    "/Users/Joshua/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.2/libraries",
+                    "/Users/Joshua/Google Drive/Arduino/libraries/",
+                    "${workspaceRoot}"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": ""
+            },
+            "macFrameworkPath": [
+                "/System/Library/Frameworks",
+                "/Library/Frameworks"
+            ],
+            "intelliSenseMode": "clang-x64",
+            "compilerPath": "/usr/local/bin/gcc-10",
+            "cStandard": "c11",
+            "cppStandard": "gnu++14"
+        }
+    ],
+    "version": 4
+}
