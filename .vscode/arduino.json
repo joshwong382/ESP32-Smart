@@ -1,7 +1,7 @@
 {
-    "board": "esp8266:esp8266:nodemcuv2",
-    "configuration": "CpuFrequency=160,VTable=flash,FlashSize=4M1M,LwIPVariant=v2mss536,Debug=Disabled,DebugLevel=None____,FlashErase=none,UploadSpeed=115200",
-    "sketch": "nodeMCU_PC.ino",
+    "board": "esp32:esp32:esp32",
+    "configuration": "PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none",
+    "sketch": "nodeMCU-PC.ino",
     "port": "/dev/tty.SLAB_USBtoUART",
     "programmer": "Arduino as ISP",
     "output": "../ArduinoOutput"
