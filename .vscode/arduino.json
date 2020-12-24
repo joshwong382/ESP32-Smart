@@ -1,8 +1,8 @@
 {
-    "board": "esp8266:esp8266:nodemcuv2",
-    "configuration": "CpuFrequency=160,VTable=flash,FlashSize=4M1M,LwIPVariant=v2mss536,Debug=Disabled,DebugLevel=None____,FlashErase=none,UploadSpeed=115200",
+    "board": "esp32:esp32:nodemcu-32s",
+    "configuration": "FlashFreq=80,UploadSpeed=921600",
     "sketch": "nodeMCU_PC.ino",
-    "port": "/dev/tty.SLAB_USBtoUART",
-    "programmer": "Arduino as ISP",
+    "port": "/dev/tty.usbserial-5",
+    "programmer": "ArduinoISP",
     "output": "../ArduinoOutput"
 }

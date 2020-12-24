@@ -2,15 +2,11 @@
     "configurations": [
         {
             "name": "Arduino",
-            "includePath": [
-            ],
+            "includePath": [],
             "forcedInclude": [],
             "browse": {
                 "path": [
-                    "/Users/Joshua/Library/Arduino15/packages/esp8266/tools",
-                    "/Users/Joshua/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.2/cores/esp8266",
-                    "/Users/Joshua/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.2/libraries",
-                    "/Users/Joshua/Google Drive/Arduino/libraries/",
+                    "/Users/Joshua/Drive/Arduino/libraries/",
                     "${workspaceRoot}"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
@@ -24,6 +20,19 @@
             "compilerPath": "/usr/local/bin/gcc-10",
             "cStandard": "c11",
             "cppStandard": "gnu++14"
+        },
+        {
+            "name": "Mac",
+            "includePath": [
+                "/Users/Joshua/Library/Arduino15/packages/esp32/tools/**",
+                "/Users/Joshua/Drive/Arduino/libraries/**",
+                "/Applications/Arduino.app/Contents/Java/libraries/**",
+                "/Users/Joshua/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/**"
+            ],
+            "forcedInclude": [],
+            "defines": [
+                "USBCON"
+            ]
         }
     ],
     "version": 4
