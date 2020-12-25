@@ -1,5 +1,4 @@
 #include "rgbdevice.h"
-#include <RGBConverter.h>
 
 Device::Device(String _name) {
     name = _name;
@@ -59,7 +58,7 @@ RGBDevice::RGBDevice(String _name):BrightnessDevice(_name) {
 }
 
 uint32_t RGBDevice::get_rgb() {
-    return (r >> 16) + (g >> 8) + b;
+    return (r << 16) + (g << 8) + b;
 }
 
 String RGBDevice::get_rgb_str() {

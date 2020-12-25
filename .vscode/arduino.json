@@ -1,8 +1,8 @@
 {
     "board": "esp32:esp32:nodemcu-32s",
     "configuration": "FlashFreq=80,UploadSpeed=921600",
-    "sketch": "nodeMCU_PC.ino",
-    "port": "/dev/tty.usbserial-5",
-    "programmer": "ArduinoISP",
+    "sketch": "nodeMCU-PC.ino",
+    "port": "/dev/tty.SLAB_USBtoUART",
+    "programmer": "Arduino as ISP",
     "output": "../ArduinoOutput"
 }
