@@ -3,6 +3,7 @@
 Device::Device(String _name) {
     name = _name;
     power = PWR_OFF;
+    status_changed_var = true;
 }
 
 bool Device::get_power() {
@@ -10,15 +11,23 @@ bool Device::get_power() {
 }
 
 void Device::set_power(bool _power) {
+    status_changed_var = true;
     power = _power;
 }
 
 bool Device::flip_power() {
+    status_changed_var = true;
     return power = !power;
 }
 
 String Device::get_name() {
     return name;
+}
+
+bool Device::status_changed() {
+    bool temp_status = status_changed_var;
+    status_changed_var = false;
+    return temp_status;
 }
 
 // BrightnessDevice
@@ -33,7 +42,8 @@ uint8_t BrightnessDevice::get_brightness_percent() {
 }
 
 void BrightnessDevice::set_brightness_percent(uint8_t _brightness) {
-    
+    status_changed_var = true;
+
     if (_brightness == 0)
         set_power(PWR_OFF);
 
@@ -67,6 +77,8 @@ String RGBDevice::get_rgb_str() {
 
 void RGBDevice::set_rgb(uint32_t rgb) {
 
+    status_changed_var = true;
+
     uint8_t r = (rgb >> 16) & 0xFF;
     uint8_t g = (rgb >>  8) & 0xFF;
     uint8_t b = rgb & 0xFF; 
@@ -75,6 +87,9 @@ void RGBDevice::set_rgb(uint32_t rgb) {
 }
 
 void RGBDevice::set_rgb(uint8_t _r, uint8_t _g, uint8_t _b) {
+
+    status_changed_var = true;
+
     r = _r;
     g = _g;
     b = _b;

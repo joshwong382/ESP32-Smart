@@ -1,17 +1,17 @@
-#define debug false
+#define debug true
 #define FASTLED_INTERNAL
-//#define FASTLED_SHOW_CORE 0
+#define CONFIG_ASYNC_TCP_RUNNING_CORE 0
+#define FASTLED_SHOW_CORE 1
 
 #define MUSIC_TRIG 32
-#define REDPIN 14
-#define REDCHANNEL 1
+#define REDPIN 26
+#define REDCHANNEL 10
 #define GREENPIN 27
 #define GREENCHANNEL 2
-#define BLUEPIN 26
+#define BLUEPIN 14
 #define BLUECHANNEL 3
 
 #include <WiFi.h>
-//#include <WebServer.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 #include "rgbdevice.h"
@@ -23,12 +23,12 @@
 #define NUM_LEDS    24
 
 // Normal LED
-#define ANALOG_FREQ 60
+#define ANALOG_FREQ 75
 // 8-bit
 #define ANALOG_RESOLUTION 8
-#define ANALOG_HZ 20
-#define DIGITAL_HZ 20
-#define HUE_UPDATE_HZ 20
+#define ANALOG_RAINBOW_HZ 10 
+#define DIGITAL_RAINBOW_HZ 10
+#define HUE_UPDATE_HZ 10
 
 // Music LED
 #define MUSIC_LED_IGNORE 100
@@ -37,14 +37,22 @@
 
 CRGB leds[NUM_LEDS];
 
-void analogDeskLED(unsigned refreshrate = 0, uint8_t rainbow_hue = 0);
-void digitalDeskLED(unsigned refreshrate = 0, uint8_t rainbow_hue = 0);
+void analogDeskLED(bool update, uint8_t rainbow_hue);
+void digitalDeskLED(bool update, uint8_t rainbow_hue);
 uint8_t musicLED();
 void analogMusicLED();
 void digitalMusicLED();
 void setAnalogRGB(uint8_t red, uint8_t blue, uint8_t green, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
 void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
+
+void pinRedPWM(uint8_t dutycycle);
+void pinGreenPWM(uint8_t dutycycle);
+void pinBluePWM(uint8_t dutycycle);
+
 void setAllWebServerPages();
+String ip2String(const IPAddress& ipAddress);
+bool isValidIP(const IPAddress& ipAddress);
+bool wifi_check();
 
 // WIFI
 char ssid[] = "WAZZUP!!! IoT";
@@ -72,11 +80,10 @@ void setup() {
 
   // FastLED 
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setDither(0);
 
   // Wi-Fi
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, pass);
+  wifi_check();
 
   // Web Server
   setAllWebServerPages();
@@ -85,17 +92,16 @@ void setup() {
 
 void loop() {
 
+  EVERY_N_SECONDS(10) {
+    wifi_check();
+  }
+
   uint8_t music_status = musicLED();
-  //uint8_t music_status = MUSIC_LED_IGNORE;
   static uint8_t rainbow_hue = 0;
-  unsigned analog_rr = ANALOG_HZ;
-  unsigned digital_rr = DIGITAL_HZ;
 
   // Update Rainbow Hue
-  static long hue_rotation_delay = millis();
-  if (millis() - hue_rotation_delay > 1000/HUE_UPDATE_HZ) {
+  EVERY_N_MILLISECONDS(1000/HUE_UPDATE_HZ) {
     rainbow_hue++;
-    hue_rotation_delay = millis();
   }
 
   // Music
@@ -104,60 +110,52 @@ void loop() {
   }
 
   if (music_status == MUSIC_LED_RELEASE) {
-    analog_rr = 0;
-    digital_rr = 0;
+    analogDeskLED(true, rainbow_hue);
+    digitalDeskLED(true, rainbow_hue);
   }
 
-  // Normal
-  analogDeskLED(analog_rr, rainbow_hue);
-  digitalDeskLED(digital_rr, rainbow_hue);
+  // Normal Desk LED
+  bool deskled_status_changed = desk_led.status_changed();
+  digitalDeskLED(deskled_status_changed, rainbow_hue);
+  analogDeskLED(deskled_status_changed, rainbow_hue);
+
 }
 
 // Analog Implementation of Desk LED
-void analogDeskLED(unsigned refreshrate, uint8_t rainbow_hue) {
-
-  static long delay = millis();
-  if (millis() - delay < 1000/refreshrate && refreshrate != 0) {
-    return;
-  }
-  delay = millis();
+void analogDeskLED(bool update, uint8_t rainbow_hue) {
 
   // Check Off
-  if (!desk_led.get_power()) {
+  if (!desk_led.get_power() && update) {
     setAnalogRGB(0, 0, 0, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
     if (debug) Serial.println("Analog OFF");
     return;
   }
 
   uint32_t desk_led_rgb = desk_led.get_rgb();
-  if (debug) Serial.println("desk_led_rgb = " + String(desk_led.get_rgb()));
 
   // Rainbow
-  if (desk_led_rgb == 0xffffff) {
-    CRGB rgb;
-    hsv2rgb_rainbow(CHSV(rainbow_hue,255,255), rgb);
-    setAnalogRGB(rgb.r, rgb.g, rgb.b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+  if (desk_led.get_power() && desk_led_rgb == 0xffffff) {
+    EVERY_N_MILLISECONDS(1000/ANALOG_RAINBOW_HZ) {
+      CRGB rgb;
+      hsv2rgb_rainbow(CHSV(rainbow_hue,255,255), rgb);
+      setAnalogRGB(rgb.r, rgb.g, rgb.b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+      return;
+    }
   }
 
   // Normal
-  else {
+  if (update) {
     setAnalogRGB(desk_led_rgb, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
   }
 }
 
 // Digital Implementation of Desk LED
-void digitalDeskLED(unsigned refreshrate, uint8_t rainbow_hue) {
+void digitalDeskLED(bool update, uint8_t rainbow_hue) {
 
   static uint8_t hue_width = 9;
-  static long delay = millis();
-
-  if (millis() - delay < 1000/refreshrate && refreshrate != 0) {
-    return;
-  }
-  delay = millis();
 
   // Check Off
-  if (!desk_led.get_power()) {
+  if (!desk_led.get_power() && update) {
     for (int i=0; i<NUM_LEDS; i++) {
       leds[i] = CRGB::Black;
     }
@@ -168,17 +166,23 @@ void digitalDeskLED(unsigned refreshrate, uint8_t rainbow_hue) {
   uint32_t desk_led_rgb = desk_led.get_rgb();
 
   // Rainbow
-  if (desk_led_rgb == 0xffffff) {
-      if (debug) Serial.println("Rainbow digital");
-      fill_rainbow(leds, NUM_LEDS, rainbow_hue, hue_width);
+  if (desk_led.get_power() && desk_led_rgb == 0xffffff) {
+      EVERY_N_MILLISECONDS(1000/DIGITAL_RAINBOW_HZ) {
+        if (debug) Serial.println("Rainbow digital");
+        fill_rainbow(leds, NUM_LEDS, rainbow_hue, hue_width);
+        FastLED.show();
+        return;
+      }
   }
 
   // Normal
-  else for (int i=0; i<NUM_LEDS; i++) {
+  if (update) {
+    for (int i=0; i<NUM_LEDS; i++) {
       leds[i] = desk_led_rgb;
+    }
+    FastLED.show();
   }
-
-  FastLED.show();
+  
 }
 
 // Returns true when music overrides normal LED
@@ -188,37 +192,43 @@ uint8_t musicLED() {
     bool current_music = !digitalRead(MUSIC_TRIG);
 
     if (!last_music && !current_music) {
+      last_music = current_music;
       return MUSIC_LED_IGNORE;
     }
 
     if (last_music && current_music) {
+      last_music = current_music;
       return MUSIC_LED_HOLD;
     }
 
     if (last_music && !current_music) {
+      last_music = current_music;
       return MUSIC_LED_RELEASE;
     }
 
-    analogMusicLED();
-    digitalMusicLED();
+    // Digital
+    for (int i=0; i<NUM_LEDS; i++) {
+      leds[i] = CRGB::White;
+    }
+    FastLED.show();
+
+    // Analog
+    setAnalogRGB(255, 255, 255, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+
+    last_music = current_music;
+    return MUSIC_LED_HOLD;
   }
+
   return MUSIC_LED_IGNORE;
 }
-
-void analogMusicLED() {
-}
-
-void digitalMusicLED() {
-}
-
 
 //
 //  HELPER FUNCTIONS
 //
 
-void setAnalogRGB(uint8_t red, uint8_t blue, uint8_t green, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel) {
+void setAnalogRGB(uint8_t red, uint8_t green, uint8_t blue, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel) {
   if (debug) {
-    Serial.println("Analog RGB Write: " + String(red) + String(green) + String(blue));
+    Serial.println("Analog RGB Write: r" + String(red, HEX) + " g" + String(green, HEX) + " b" + String(blue, HEX));
   }
   ledcWrite(red_channel, red); // Red
   ledcWrite(green_channel, green); // Green
@@ -227,9 +237,9 @@ void setAnalogRGB(uint8_t red, uint8_t blue, uint8_t green, uint8_t red_channel,
 
 void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel) {
   uint8_t r, g, b;
-  r = (rgb >> 16) && 0xFF;
-  g = (rgb >> 8) && 0xFF;
-  b = (rgb) && 0xFF;
+  r = (rgb >> 16) & 0xFF;
+  g = (rgb >>  8) & 0xFF;
+  b = rgb & 0xFF;
   setAnalogRGB(r, g, b, red_channel, green_channel, blue_channel);
 }
 
@@ -254,7 +264,6 @@ void setAllWebServerPages() {
     response_html += "<tr><td style='text-align: right;'>Music LED:</td><td>" + read3 + "</td><td>&emsp;<a href=\"/music/" + read4 + "\">Turn " + read4 + "</a></td></tr>";
     response_html += "</table></body></html>";
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_html);
-    response->addHeader("RGB", desk_led.get_rgb_str());
     response->addHeader("System", "NodeMCU 1.0");
     response->addHeader("Product", "PC RGB Controller");
     response->addHeader("Designer", "C.H.J. WONG");
@@ -341,4 +350,43 @@ void setAllWebServerPages() {
   server.on("/music/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", String(music_led.get_brightness_percent()));
   });
+}
+
+// IP
+
+String ip2String(const IPAddress& ipAddress) {
+  return String(ipAddress[0]) + String(".") +\
+  String(ipAddress[1]) + String(".") +\
+  String(ipAddress[2]) + String(".") +\
+  String(ipAddress[3]); 
+}
+
+bool isValidIP(const IPAddress& ipAddress) {
+  return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
+}
+
+bool wifi_check() {
+
+  static long attempt_connect_timer;
+  if (WiFi.status() != WL_CONNECTED && millis() - attempt_connect_timer >= 10000) {
+    attempt_connect_timer = millis();
+    WiFi.begin(ssid, pass);
+    if (debug) Serial.print("Disconnected. Reconnecting... Connection Status: ");
+    if (debug) Serial.println(WiFi.status());
+    return false;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+
+  IPAddress ip = WiFi.localIP();
+  if (!isValidIP(ip)) {
+    if (debug) Serial.print("No IP... Connection Status: ");
+    if (debug) Serial.println(WiFi.status());
+    WiFi.disconnect();
+    return false;
+  }
+
+  return true;
 }

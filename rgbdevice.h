@@ -11,10 +11,14 @@ class Device {
     void set_power(bool _power);
     bool flip_power();
     String get_name();
+    bool status_changed();
 
     private:
     String name;
     bool power;
+
+    protected:
+    bool status_changed_var;
 };
 
 
