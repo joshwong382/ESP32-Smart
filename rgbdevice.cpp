@@ -3,7 +3,7 @@
 Device::Device(String _name) {
     name = _name;
     power = PWR_OFF;
-    status_changed_var = Devices::None;
+    status_changed_var = Devices::UpdateAll;
 }
 
 bool Device::get_power() {
@@ -11,6 +11,7 @@ bool Device::get_power() {
 }
 
 void Device::set_power(bool _power, Devices deviceid) {
+    Serial.println("power request: " + String(_power) + " from device " + String(deviceid));
     status_changed_var = deviceid;
     power = _power;
 }
@@ -42,6 +43,7 @@ uint8_t BrightnessDevice::get_brightness_percent() {
 }
 
 void BrightnessDevice::set_brightness_percent(uint8_t _brightness, Device::Devices deviceid) {
+    Serial.println("brightness request: " + String(_brightness) + " from device " + String(deviceid));
     status_changed_var = deviceid;
 
     if (_brightness == 0)

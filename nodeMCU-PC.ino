@@ -54,7 +54,7 @@ void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint
 void setAllWebServerPages();
 String ip2String(const IPAddress& ipAddress);
 bool isValidIP(const IPAddress& ipAddress);
-bool wifi_check();
+//bool wifi_check();
 
 // HomeKit
 struct HOMEKIT_RGBLED : Service::LightBulb {
@@ -71,9 +71,9 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
     CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
 
     power->setVal(internalrgbdevice->get_power());
-    H->setVal(fastled_hsv.hue);
-    S->setVal(fastled_hsv.saturation);
-    V->setVal(fastled_hsv.value);
+    H->setVal(fastled_hsv.hue * 360 / 255);
+    S->setVal(fastled_hsv.saturation * 100 / 255);
+    V->setVal(fastled_hsv.value * 100 / 255);
   }
 
   HOMEKIT_RGBLED(RGBDevice *_internaldev) : Service::LightBulb() {
@@ -90,12 +90,12 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
   boolean update() {
 
     // H[0-360]
-    // S[0-1]
-    // V[0-1]
+    // S[0-100]
+    // V[0-100]
 
     float new_h = H->getVal<float>();
     float new_s = S->getVal<float>();
-    int new_v = V->getVal<float>();
+    float new_v = V->getVal<float>();
 
     if (power->updated()) {
       internalrgbdevice->set_power(power->getNewVal(), Device::HomeKit);
@@ -113,31 +113,28 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
       new_v = V->getNewVal();
     }
 
+    if (debug) Serial.println("HomeKit H: " + String(new_h) + " S: " + String(new_s) + " V: " + String(new_v));
+
     CRGB fastled_rgb;
     uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
-    uint8_t uint_s = uint8_t(new_s * 255);
-    uint8_t uint_v = uint8_t(new_v * 255);
+    uint8_t uint_s = uint8_t(new_s * 255 / 100);
+    uint8_t uint_v = uint8_t(new_v * 255 / 100);
     hsv2rgb_rainbow(CHSV(uint_h, uint_s, uint_v), fastled_rgb);
+    if (debug) Serial.println("HomeKit r: " + String(fastled_rgb.r) + " g: " + String(fastled_rgb.g) + " b: " + String(fastled_rgb.b));
     internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, Device::HomeKit);
   }
 
 };
 
-// WIFI
-char ssid[] = "***REMOVED******REMOVED***";
-char pass[] = "***REMOVED***";
-//char ssid[] = "Josh-iPXR";
-//char pass[] = "personal999";
-AsyncWebServer server(9999);
-
 //TLC5971 tlc;
 RGBDevice desk_led = RGBDevice("desk_led");
 HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
+AsyncWebServer server(9999);
 
 // SETUP
 void homespan_setup() {
-  homeSpan.begin(Category::Lighting, "NodeMCU-PC");
+  homeSpan.begin(Category::Lighting, "NodeMCU-PC", "NodeMCU-PC-", "NodeMCU-PC");
 
   new SpanAccessory();
   new Service::AccessoryInformation();
@@ -154,7 +151,7 @@ void homespan_setup() {
 }
 
 void setup() {
-  if (debug) Serial.begin(115200);
+  Serial.begin(115200);
   
   // Analog
   ledcSetup(REDCHANNEL, ANALOG_FREQ, ANALOG_RESOLUTION);
@@ -175,7 +172,6 @@ void setup() {
 
   // Wi-Fi
   WiFi.mode(WIFI_STA);
-  wifi_check();
 
   // Homespan
   homespan_setup();  
@@ -186,10 +182,6 @@ void setup() {
 }
 
 void loop() {
-
-  EVERY_N_SECONDS(10) {
-    wifi_check();
-  }
 
   homeSpan.poll();
 
@@ -215,9 +207,9 @@ void loop() {
   Device::Devices deskled_status_changed = desk_led.status_changed();
   digitalDeskLED(deskled_status_changed, rainbow_hue);
   analogDeskLED(deskled_status_changed, rainbow_hue);
-  if (deskled_status_changed != Device::HomeKit) {
-    if (desk_led_homekit != NULL) desk_led_homekit->internal_update();
-  }  
+  if (deskled_status_changed != Device::None)
+    if (deskled_status_changed != Device::HomeKit)
+      if (desk_led_homekit != NULL) desk_led_homekit->internal_update();
 }
 
 // Analog Implementation of Desk LED
@@ -259,6 +251,7 @@ void digitalDeskLED(bool update, uint8_t rainbow_hue) {
       leds[i] = CRGB::Black;
     }
     FastLED.show();
+    if (debug) Serial.println("Digital OFF");
     return;
   }
 
@@ -267,7 +260,7 @@ void digitalDeskLED(bool update, uint8_t rainbow_hue) {
   // Rainbow
   if (desk_led.get_power() && desk_led_rgb == 0xffffff) {
       EVERY_N_MILLISECONDS(1000/DIGITAL_RAINBOW_HZ) {
-        if (debug) Serial.println("Rainbow digital");
+        //if (debug) Serial.println("Rainbow digital");
         fill_rainbow(leds, NUM_LEDS, rainbow_hue, hue_width);
         FastLED.show();
       }
@@ -326,9 +319,7 @@ uint8_t musicLED() {
 //
 
 void setAnalogRGB(uint8_t red, uint8_t green, uint8_t blue, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel) {
-  if (debug) {
-    Serial.println("Analog RGB Write: r" + String(red, HEX) + " g" + String(green, HEX) + " b" + String(blue, HEX));
-  }
+  //if (debug) Serial.println("Analog RGB Write: r" + String(red, HEX) + " g" + String(green, HEX) + " b" + String(blue, HEX));
 
   ledcWrite(red_channel, red); // Red
   ledcWrite(green_channel, green); // Green
@@ -480,6 +471,7 @@ bool isValidIP(const IPAddress& ipAddress) {
   return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
 }
 
+/*
 bool wifi_check() {
 
   static long attempt_connect_timer;
@@ -505,3 +497,4 @@ bool wifi_check() {
 
   return true;
 }
+*/

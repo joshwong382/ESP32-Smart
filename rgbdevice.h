@@ -8,9 +8,10 @@ class Device {
     Device(String _name);
 
     enum Devices {
-      None,
-      HomeKit,
-      HTTP_API
+      None = 0,
+      HomeKit = 1,
+      HTTP_API = 2,
+      UpdateAll = 3
     };
 
     bool get_power();
