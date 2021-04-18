@@ -1,19 +1,17 @@
-#define debug true
-#define FASTLED_INTERNAL
+#define debug false
+//#define FASTLED_INTERNAL
+//#define FASTLED_ALLOW_INTERRUPTS 0
 #define CONFIG_ASYNC_TCP_RUNNING_CORE 0
 #define FASTLED_SHOW_CORE 1
-
-#define MUSIC_TRIG 32
-#define REDPIN 26
-#define REDCHANNEL 10
-#define GREENPIN 27
-#define GREENCHANNEL 2
-#define BLUEPIN 14
-#define BLUECHANNEL 3
+//#define FASTLED_ESP32_I2S
+#define FASTLED_ALL_PINS_HARDWARE_SPI
+#define FASTLED_ESP32_SPI_BUS HSPI
 
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
+#include <HomeSpan.h>
+//#include "tlc57911.h"
 #include "rgbdevice.h"
 
 // FastLED
@@ -22,12 +20,20 @@
 #define COLOR_ORDER GRB
 #define NUM_LEDS    24
 
-// Normal LED
-#define ANALOG_FREQ 75
-// 8-bit
+// Analog LED
+#define ANALOG_FREQ 60
 #define ANALOG_RESOLUTION 8
-#define ANALOG_RAINBOW_HZ 10 
-#define DIGITAL_RAINBOW_HZ 10
+#define MUSIC_TRIG 32
+#define REDPIN 26
+#define REDCHANNEL 10
+#define GREENPIN 27
+#define GREENCHANNEL 2
+#define BLUEPIN 14
+#define BLUECHANNEL 3
+
+// Updates
+#define ANALOG_RAINBOW_HZ 20
+#define DIGITAL_RAINBOW_HZ 20
 #define HUE_UPDATE_HZ 10
 
 // Music LED
@@ -45,27 +51,112 @@ void digitalMusicLED();
 void setAnalogRGB(uint8_t red, uint8_t blue, uint8_t green, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
 void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
 
-void pinRedPWM(uint8_t dutycycle);
-void pinGreenPWM(uint8_t dutycycle);
-void pinBluePWM(uint8_t dutycycle);
-
 void setAllWebServerPages();
 String ip2String(const IPAddress& ipAddress);
 bool isValidIP(const IPAddress& ipAddress);
 bool wifi_check();
 
+// HomeKit
+struct HOMEKIT_RGBLED : Service::LightBulb {
+
+  SpanCharacteristic *power;                   // reference to the On Characteristic
+  SpanCharacteristic *H;                       // reference to the Hue Characteristic
+  SpanCharacteristic *S;                       // reference to the Saturation Characteristic
+  SpanCharacteristic *V;                       // reference to the Brightness Characteristic
+  RGBDevice *internalrgbdevice;
+
+  void internal_update() {
+
+    CRGB fastled_rgb = CRGB(internalrgbdevice->get_rgb());
+    CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
+
+    power->setVal(internalrgbdevice->get_power());
+    H->setVal(fastled_hsv.hue);
+    S->setVal(fastled_hsv.saturation);
+    V->setVal(fastled_hsv.value);
+  }
+
+  HOMEKIT_RGBLED(RGBDevice *_internaldev) : Service::LightBulb() {
+    internalrgbdevice = _internaldev;
+    power = new Characteristic::On();
+    H = new Characteristic::Hue();
+    S = new Characteristic::Saturation();
+    V = new Characteristic::Brightness();
+    V->setRange(1, 100, 1); // min 1%, max 100%, in 1% increments
+
+    internal_update();
+  }
+
+  boolean update() {
+
+    // H[0-360]
+    // S[0-1]
+    // V[0-1]
+
+    float new_h = H->getVal<float>();
+    float new_s = S->getVal<float>();
+    int new_v = V->getVal<float>();
+
+    if (power->updated()) {
+      internalrgbdevice->set_power(power->getNewVal(), Device::HomeKit);
+    }
+
+    if (H->updated()) {
+      new_h = H->getNewVal();
+    }
+
+    if (S->updated()) {
+      new_s = S->getNewVal();
+    }
+
+    if (V->updated()) {
+      new_v = V->getNewVal();
+    }
+
+    CRGB fastled_rgb;
+    uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
+    uint8_t uint_s = uint8_t(new_s * 255);
+    uint8_t uint_v = uint8_t(new_v * 255);
+    hsv2rgb_rainbow(CHSV(uint_h, uint_s, uint_v), fastled_rgb);
+    internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, Device::HomeKit);
+  }
+
+};
+
 // WIFI
 char ssid[] = "***REMOVED******REMOVED***";
 char pass[] = "***REMOVED***";
+//char ssid[] = "Josh-iPXR";
+//char pass[] = "personal999";
 AsyncWebServer server(9999);
 
+//TLC5971 tlc;
 RGBDevice desk_led = RGBDevice("desk_led");
+HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
 
 // SETUP
+void homespan_setup() {
+  homeSpan.begin(Category::Lighting, "NodeMCU-PC");
+
+  new SpanAccessory();
+  new Service::AccessoryInformation();
+  new Characteristic::Name("Desk LED");
+  new Characteristic::Manufacturer("joshua@josh-wong.net");
+  new Characteristic::SerialNumber("JOSH-207");
+  new Characteristic::Model("ESP32");
+  new Characteristic::FirmwareRevision("2.3");
+  new Characteristic::Identify();
+
+  new Service::HAPProtocolInformation();
+  new Characteristic::Version("1.1.0");
+  desk_led_homekit = new HOMEKIT_RGBLED(&desk_led);
+}
 
 void setup() {
   if (debug) Serial.begin(115200);
+  
+  // Analog
   ledcSetup(REDCHANNEL, ANALOG_FREQ, ANALOG_RESOLUTION);
   ledcAttachPin(REDPIN, REDCHANNEL);
 
@@ -74,9 +165,10 @@ void setup() {
 
   ledcSetup(BLUECHANNEL, ANALOG_FREQ, ANALOG_RESOLUTION);
   ledcAttachPin(BLUEPIN, BLUECHANNEL);
-
+  //if (debug) Serial.println("Setting up TLC57911...");
+  //tlc.initializeTLC();
+  
   pinMode(MUSIC_TRIG, INPUT_PULLUP);
-
 
   // FastLED 
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
@@ -85,6 +177,9 @@ void setup() {
   WiFi.mode(WIFI_STA);
   wifi_check();
 
+  // Homespan
+  homespan_setup();  
+  
   // Web Server
   setAllWebServerPages();
   server.begin();
@@ -95,6 +190,8 @@ void loop() {
   EVERY_N_SECONDS(10) {
     wifi_check();
   }
+
+  homeSpan.poll();
 
   uint8_t music_status = musicLED();
   static uint8_t rainbow_hue = 0;
@@ -114,11 +211,13 @@ void loop() {
     digitalDeskLED(true, rainbow_hue);
   }
 
-  // Normal Desk LED
-  bool deskled_status_changed = desk_led.status_changed();
+  // Normal Desk LED Status
+  Device::Devices deskled_status_changed = desk_led.status_changed();
   digitalDeskLED(deskled_status_changed, rainbow_hue);
   analogDeskLED(deskled_status_changed, rainbow_hue);
-
+  if (deskled_status_changed != Device::HomeKit) {
+    if (desk_led_homekit != NULL) desk_led_homekit->internal_update();
+  }  
 }
 
 // Analog Implementation of Desk LED
@@ -139,8 +238,8 @@ void analogDeskLED(bool update, uint8_t rainbow_hue) {
       CRGB rgb;
       hsv2rgb_rainbow(CHSV(rainbow_hue,255,255), rgb);
       setAnalogRGB(rgb.r, rgb.g, rgb.b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
-      return;
     }
+    return;
   }
 
   // Normal
@@ -171,8 +270,8 @@ void digitalDeskLED(bool update, uint8_t rainbow_hue) {
         if (debug) Serial.println("Rainbow digital");
         fill_rainbow(leds, NUM_LEDS, rainbow_hue, hue_width);
         FastLED.show();
-        return;
       }
+      return;
   }
 
   // Normal
@@ -230,9 +329,25 @@ void setAnalogRGB(uint8_t red, uint8_t green, uint8_t blue, uint8_t red_channel,
   if (debug) {
     Serial.println("Analog RGB Write: r" + String(red, HEX) + " g" + String(green, HEX) + " b" + String(blue, HEX));
   }
+
   ledcWrite(red_channel, red); // Red
   ledcWrite(green_channel, green); // Green
   ledcWrite(blue_channel, blue); // Blue
+  
+  /*
+  // Convert to 16 bit color
+  uint16_t red_16 = (red + 1) * 256 - 1;
+  uint16_t green_16 = (green + 1) * 256 - 1;
+  uint16_t blue_16 = (blue + 1) * 256 - 1;
+  
+  for(uint16_t i=0; i < 3 * NUM_TLC59711 - 1; i++) {
+      tlc.setLED(i*3, red_16);
+      tlc.setLED(i*3+1, green_16);
+      tlc.setLED(i*3+2, blue_16);
+      tlc.writeLED();
+  }
+  */
+  
 }
 
 void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel) {
@@ -240,7 +355,7 @@ void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint
   r = (rgb >> 16) & 0xFF;
   g = (rgb >>  8) & 0xFF;
   b = rgb & 0xFF;
-  setAnalogRGB(r, g, b, red_channel, green_channel, blue_channel);
+  setAnalogRGB(r, g, b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 }
 
 // Web Server
@@ -280,14 +395,14 @@ void setAllWebServerPages() {
 
   server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     
-    desk_led.set_power(PWR_ON);
+    desk_led.set_power(PWR_ON, Device::HTTP_API);
 
     if (request->hasParam("color")) {
       String color = request->getParam("color")->value();
       char color_arr[7];
       color.toCharArray(color_arr, 7);
       uint32_t rgb = strtol(color_arr, NULL, 16);
-      desk_led.set_rgb(rgb);
+      desk_led.set_rgb(rgb, Device::HTTP_API);
       
       AsyncWebServerResponse *response = request->beginResponse(302);
       //response->addHeader("RGB: R: ", colorinttohexstr(r) + "G: " + colorinttohexstr(g) + "B: " + colorinttohexstr(b));
@@ -301,7 +416,7 @@ void setAllWebServerPages() {
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
       if (brightness >= 0 || brightness <= 100) {
-        desk_led.set_brightness_percent(brightness);
+        desk_led.set_brightness_percent(brightness, Device::HTTP_API);
       }
     }
 
@@ -309,7 +424,7 @@ void setAllWebServerPages() {
   });
 
   server.on("/led/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    desk_led.set_power(PWR_OFF);
+    desk_led.set_power(PWR_OFF, Device::HTTP_API);
     request->redirect("/");
   });
 
@@ -331,7 +446,7 @@ void setAllWebServerPages() {
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
       if (brightness >= 0 || brightness <= 100) {
-        music_led.set_brightness_percent(brightness);
+        music_led.set_brightness_percent(brightness, Device::HTTP_API);
       }
     }
     
@@ -339,7 +454,7 @@ void setAllWebServerPages() {
   });
 
   server.on("/music/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    music_led.set_power(PWR_OFF);
+    music_led.set_power(PWR_OFF, Device::HTTP_API);
     request->redirect("/");
   });
 

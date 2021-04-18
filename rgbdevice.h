@@ -7,18 +7,24 @@ class Device {
     public:
     Device(String _name);
 
+    enum Devices {
+      None,
+      HomeKit,
+      HTTP_API
+    };
+
     bool get_power();
-    void set_power(bool _power);
-    bool flip_power();
+    void set_power(bool _power, Devices deviceid);
+    bool flip_power(Devices deviceid);
     String get_name();
-    bool status_changed();
+    Devices status_changed();
 
     private:
     String name;
     bool power;
 
     protected:
-    bool status_changed_var;
+    Devices status_changed_var;
 };
 
 
@@ -28,7 +34,7 @@ class BrightnessDevice : public Device {
     BrightnessDevice(String _name);
 
     uint8_t get_brightness_percent();
-    void set_brightness_percent(uint8_t _brightness);
+    void set_brightness_percent(uint8_t _brightness, Device::Devices deviceid);
 
     private:
     uint8_t brightness;
@@ -43,8 +49,9 @@ class RGBDevice : public BrightnessDevice {
 
     uint32_t get_rgb();
     String get_rgb_str();
-    void set_rgb(uint8_t _r, uint8_t _g, uint8_t _b);
-    void set_rgb(uint32_t rgb);
+    // Device ID that updated
+    void set_rgb(uint8_t _r, uint8_t _g, uint8_t _b, Device::Devices deviceid);
+    void set_rgb(uint32_t rgb, Device::Devices deviceid);
 
     private:
 
