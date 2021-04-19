@@ -7,12 +7,14 @@
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 #define FASTLED_ESP32_SPI_BUS HSPI
 
+//#include "tlc57911.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 #include <HomeSpan.h>
-//#include "tlc57911.h"
 #include "rgbdevice.h"
+#include "webserver.h"
+#include "homekit.h"
 
 // FastLED
 #define DATA_PIN    33
@@ -41,8 +43,6 @@
 #define MUSIC_LED_HOLD 101
 #define MUSIC_LED_RELEASE 102
 
-CRGB leds[NUM_LEDS];
-
 void analogDeskLED(bool update, uint8_t rainbow_hue);
 void digitalDeskLED(bool update, uint8_t rainbow_hue);
 uint8_t musicLED();
@@ -51,104 +51,17 @@ void digitalMusicLED();
 void setAnalogRGB(uint8_t red, uint8_t blue, uint8_t green, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
 void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint8_t blue_channel);
 
-void setAllWebServerPages();
-String ip2String(const IPAddress& ipAddress);
-bool isValidIP(const IPAddress& ipAddress);
+//void setAllWebServerPages();
+//String ip2String(const IPAddress& ipAddress);
+//bool isValidIP(const IPAddress& ipAddress);
 //bool wifi_check();
 
-// HomeKit
-struct HOMEKIT_RGBLED : Service::LightBulb {
-
-  SpanCharacteristic *power;                   // reference to the On Characteristic
-  SpanCharacteristic *H;                       // reference to the Hue Characteristic
-  SpanCharacteristic *S;                       // reference to the Saturation Characteristic
-  SpanCharacteristic *V;                       // reference to the Brightness Characteristic
-  RGBDevice *internalrgbdevice;
-
-  void internal_update() {
-
-    CRGB fastled_rgb = CRGB(internalrgbdevice->get_rgb());
-    CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
-
-    power->setVal(internalrgbdevice->get_power());
-    H->setVal(fastled_hsv.hue * 360 / 255);
-    S->setVal(fastled_hsv.saturation * 100 / 255);
-    V->setVal(fastled_hsv.value * 100 / 255);
-  }
-
-  HOMEKIT_RGBLED(RGBDevice *_internaldev) : Service::LightBulb() {
-    internalrgbdevice = _internaldev;
-    power = new Characteristic::On();
-    H = new Characteristic::Hue();
-    S = new Characteristic::Saturation();
-    V = new Characteristic::Brightness();
-    V->setRange(1, 100, 1); // min 1%, max 100%, in 1% increments
-
-    internal_update();
-  }
-
-  boolean update() {
-
-    // H[0-360]
-    // S[0-100]
-    // V[0-100]
-
-    float new_h = H->getVal<float>();
-    float new_s = S->getVal<float>();
-    float new_v = V->getVal<float>();
-
-    if (power->updated()) {
-      internalrgbdevice->set_power(power->getNewVal(), Device::HomeKit);
-    }
-
-    if (H->updated()) {
-      new_h = H->getNewVal();
-    }
-
-    if (S->updated()) {
-      new_s = S->getNewVal();
-    }
-
-    if (V->updated()) {
-      new_v = V->getNewVal();
-    }
-
-    if (debug) Serial.println("HomeKit H: " + String(new_h) + " S: " + String(new_s) + " V: " + String(new_v));
-
-    CRGB fastled_rgb;
-    uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
-    uint8_t uint_s = uint8_t(new_s * 255 / 100);
-    uint8_t uint_v = uint8_t(new_v * 255 / 100);
-    hsv2rgb_rainbow(CHSV(uint_h, uint_s, uint_v), fastled_rgb);
-    if (debug) Serial.println("HomeKit r: " + String(fastled_rgb.r) + " g: " + String(fastled_rgb.g) + " b: " + String(fastled_rgb.b));
-    internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, Device::HomeKit);
-  }
-
-};
-
 //TLC5971 tlc;
+CRGB leds[NUM_LEDS];
 RGBDevice desk_led = RGBDevice("desk_led");
 HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
 AsyncWebServer server(9999);
-
-// SETUP
-void homespan_setup() {
-  homeSpan.begin(Category::Lighting, "NodeMCU-PC", "NodeMCU-PC-", "NodeMCU-PC");
-
-  new SpanAccessory();
-  new Service::AccessoryInformation();
-  new Characteristic::Name("Desk LED");
-  new Characteristic::Manufacturer("joshua@josh-wong.net");
-  new Characteristic::SerialNumber("JOSH-207");
-  new Characteristic::Model("ESP32");
-  new Characteristic::FirmwareRevision("2.3");
-  new Characteristic::Identify();
-
-  new Service::HAPProtocolInformation();
-  new Characteristic::Version("1.1.0");
-  desk_led_homekit = new HOMEKIT_RGBLED(&desk_led);
-}
 
 void setup() {
   Serial.begin(115200);
@@ -162,6 +75,7 @@ void setup() {
 
   ledcSetup(BLUECHANNEL, ANALOG_FREQ, ANALOG_RESOLUTION);
   ledcAttachPin(BLUEPIN, BLUECHANNEL);
+
   //if (debug) Serial.println("Setting up TLC57911...");
   //tlc.initializeTLC();
   
@@ -174,10 +88,12 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   // Homespan
-  homespan_setup();  
+  homeSpan.begin(Category::Lighting, "NodeMCU-PC", "NodeMCU-PC", "NodeMCU-PC");
+  new HOMEKIT_ACCESSORY("desk_led");
+  desk_led_homekit = new HOMEKIT_RGBLED(&desk_led);
   
   // Web Server
-  setAllWebServerPages();
+  setAllWebServerPages(&server, &desk_led, &music_led);
   server.begin();
 }
 
@@ -348,153 +264,3 @@ void setAnalogRGB(uint32_t rgb, uint8_t red_channel, uint8_t green_channel, uint
   b = rgb & 0xFF;
   setAnalogRGB(r, g, b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 }
-
-// Web Server
-void setAllWebServerPages() {
-
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect("/");
-  });
-
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String read1 = desk_led.get_power() ? String(desk_led.get_brightness_percent()) + "%" : "OFF";
-    String read2 = desk_led.get_power() ? "off" : "on";
-    String read3 = music_led.get_power() ? String(music_led.get_brightness_percent()) + "%" : "OFF";
-    String read4 = music_led.get_power() ? "off" : "on";
-    String response_html = "";
-    response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
-    response_html += "<style>@font-face { font-family: rubrik; src: url(https://edev.i.lithium.com/html/assets/Rubrik_Regular.otf); }";
-    response_html += "* { font-family: rubrik; } </style></head>";
-    response_html += "<body><table style='font-size: 18px;'>";
-    response_html += "<tr><td style='text-align: right;'>LED:</td><td>" + read1 + "</td><td>&emsp;<a href=\"/led/" + read2 + "\">Turn " + read2 + "</a></td></tr>";
-    response_html += "<tr><td style='text-align: right;'>Music LED:</td><td>" + read3 + "</td><td>&emsp;<a href=\"/music/" + read4 + "\">Turn " + read4 + "</a></td></tr>";
-    response_html += "</table></body></html>";
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_html);
-    response->addHeader("System", "NodeMCU 1.0");
-    response->addHeader("Product", "PC RGB Controller");
-    response->addHeader("Designer", "C.H.J. WONG");
-    request->send(response);
-  });
-
-  server.on("/metrics", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String response_html = "# Prometheus Metrics";
-    response_html += "\ndesk_led " + String(desk_led.get_brightness_percent());
-    response_html += "\nmusic_led " + String(music_led.get_brightness_percent());
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", response_html);
-    request->send(response);
-  });
-
-  server.on("/led/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    
-    desk_led.set_power(PWR_ON, Device::HTTP_API);
-
-    if (request->hasParam("color")) {
-      String color = request->getParam("color")->value();
-      char color_arr[7];
-      color.toCharArray(color_arr, 7);
-      uint32_t rgb = strtol(color_arr, NULL, 16);
-      desk_led.set_rgb(rgb, Device::HTTP_API);
-      
-      AsyncWebServerResponse *response = request->beginResponse(302);
-      //response->addHeader("RGB: R: ", colorinttohexstr(r) + "G: " + colorinttohexstr(g) + "B: " + colorinttohexstr(b));
-      //response->addHeader("HSV", String(hue) + "," + String(sat) + "," + String(br));
-      response->addHeader("Location", "/");
-      request->send(response);
-      return;
-    }
-
-    int brightness = -1;
-    if (request->hasParam("brightness")) {
-      brightness = request->getParam("brightness")->value().toInt();
-      if (brightness >= 0 || brightness <= 100) {
-        desk_led.set_brightness_percent(brightness, Device::HTTP_API);
-      }
-    }
-
-    request->redirect("/");
-  });
-
-  server.on("/led/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    desk_led.set_power(PWR_OFF, Device::HTTP_API);
-    request->redirect("/");
-  });
-
-  server.on("/led/status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led.get_power()));
-  });
-
-  server.on("/led/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led.get_brightness_percent()));
-  });
-
-  server.on("/led/color", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String rgb = desk_led.get_rgb_str();
-    request->send(200, "text/plain", rgb);
-  });
-
-  server.on("/music/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-    int brightness = -1;
-    if (request->hasParam("brightness")) {
-      brightness = request->getParam("brightness")->value().toInt();
-      if (brightness >= 0 || brightness <= 100) {
-        music_led.set_brightness_percent(brightness, Device::HTTP_API);
-      }
-    }
-    
-    request->redirect("/");
-  });
-
-  server.on("/music/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-    music_led.set_power(PWR_OFF, Device::HTTP_API);
-    request->redirect("/");
-  });
-
-  server.on("/music/status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led.get_power()));
-  });
-
-  server.on("/music/brightness", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led.get_brightness_percent()));
-  });
-}
-
-// IP
-
-String ip2String(const IPAddress& ipAddress) {
-  return String(ipAddress[0]) + String(".") +\
-  String(ipAddress[1]) + String(".") +\
-  String(ipAddress[2]) + String(".") +\
-  String(ipAddress[3]); 
-}
-
-bool isValidIP(const IPAddress& ipAddress) {
-  return (ipAddress[0] > 0 && ipAddress[1] >= 0 && ipAddress[2] >= 0 && ipAddress[3] >=0 && ipAddress[0] < 255 && ipAddress[1] < 255 && ipAddress[2] < 255 && ipAddress[3] < 255);
-}
-
-/*
-bool wifi_check() {
-
-  static long attempt_connect_timer;
-  if (WiFi.status() != WL_CONNECTED && millis() - attempt_connect_timer >= 10000) {
-    attempt_connect_timer = millis();
-    WiFi.begin(ssid, pass);
-    if (debug) Serial.print("Disconnected. Reconnecting... Connection Status: ");
-    if (debug) Serial.println(WiFi.status());
-    return false;
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-
-  IPAddress ip = WiFi.localIP();
-  if (!isValidIP(ip)) {
-    if (debug) Serial.print("No IP... Connection Status: ");
-    if (debug) Serial.println(WiFi.status());
-    WiFi.disconnect();
-    return false;
-  }
-
-  return true;
-}
-*/

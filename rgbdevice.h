@@ -1,3 +1,7 @@
+//#ifndef homekit_h
+//#define homekit_h
+#pragma once
+
 #include "Arduino.h"
 #define PWR_OFF false
 #define PWR_ON true
@@ -62,3 +66,5 @@ class RGBDevice : public BrightnessDevice {
     String colorinttohexstr(uint8_t color);
 
 };
+
+//#endif
