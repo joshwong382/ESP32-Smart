@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "__node_handle": "cpp",
+        "optional": "cpp",
+        "regex": "cpp",
+        "system_error": "cpp",
+        "*.tcc": "cpp",
+        "numeric": "cpp",
+        "filesystem": "cpp",
+        "typeindex": "cpp",
+        "typeinfo": "cpp"
+    }
+}

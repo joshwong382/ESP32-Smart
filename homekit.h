@@ -1,13 +1,21 @@
-#ifndef homekit_h
-#define homekit_h
+#pragma once
 #include <Arduino.h>
 #include <FastLED.h>
 #include <HomeSpan.h>
-#include "rgbdevice.h"
+#include "smartdevice.h"
+#include "frontend.h"
+
+static bool homespan_init = false;
 
 struct HOMEKIT_ACCESSORY : SpanAccessory {
 
   HOMEKIT_ACCESSORY(const char *name) : SpanAccessory() {
+
+    if (!homespan_init) {
+      homeSpan.begin(Category::Lighting, "NodeMCU-PC", "NodeMCU-PC", "NodeMCU-PC");
+      homespan_init = true;
+    }
+
     new Service::AccessoryInformation();
     new Characteristic::Name(name);
     new Characteristic::Manufacturer("joshua@josh-wong.net");
@@ -18,6 +26,10 @@ struct HOMEKIT_ACCESSORY : SpanAccessory {
 
     new Service::HAPProtocolInformation();
     new Characteristic::Version("1.1.0");
+  }
+
+  static void loop() {
+    if (homespan_init) homeSpan.poll();
   }
 
 };
@@ -32,8 +44,8 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
 
   void internal_update() {
 
-    CRGB fastled_rgb = CRGB(internalrgbdevice->get_rgb());
-    CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
+    const CRGB fastled_rgb = CRGB(internalrgbdevice->get_rgb());
+    const CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
 
     power->setVal(internalrgbdevice->get_power());
     H->setVal(fastled_hsv.hue * 360 / 255);
@@ -63,7 +75,7 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
     float new_v = V->getVal<float>();
 
     if (power->updated()) {
-      internalrgbdevice->set_power(power->getNewVal(), Device::HomeKit);
+      internalrgbdevice->set_power(power->getNewVal(), FrontEnd::HomeKit);
     }
 
     if (H->updated()) {
@@ -81,14 +93,12 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
     if (debug) Serial.println("HomeKit H: " + String(new_h) + " S: " + String(new_s) + " V: " + String(new_v));
 
     CRGB fastled_rgb;
-    uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
-    uint8_t uint_s = uint8_t(new_s * 255 / 100);
-    uint8_t uint_v = uint8_t(new_v * 255 / 100);
+    const uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
+    const uint8_t uint_s = uint8_t(new_s * 255 / 100);
+    const uint8_t uint_v = uint8_t(new_v * 255 / 100);
     hsv2rgb_rainbow(CHSV(uint_h, uint_s, uint_v), fastled_rgb);
     if (debug) Serial.println("HomeKit r: " + String(fastled_rgb.r) + " g: " + String(fastled_rgb.g) + " b: " + String(fastled_rgb.b));
-    internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, Device::HomeKit);
+    internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, FrontEnd::HomeKit);
   }
 
 };
-
-#endif
