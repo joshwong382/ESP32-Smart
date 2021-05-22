@@ -36,18 +36,17 @@ struct HOMEKIT_ACCESSORY : SpanAccessory {
 
 struct HOMEKIT_RGBLED : Service::LightBulb {
 
-  SpanCharacteristic *power;                   // reference to the On Characteristic
-  SpanCharacteristic *H;                       // reference to the Hue Characteristic
-  SpanCharacteristic *S;                       // reference to the Saturation Characteristic
-  SpanCharacteristic *V;                       // reference to the Brightness Characteristic
+  SpanCharacteristic *power;
+  SpanCharacteristic *H;
+  SpanCharacteristic *S;
+  SpanCharacteristic *V;
   RGBDevice *internalrgbdevice;
 
   void internal_update() {
 
-    const CRGB fastled_rgb = CRGB(internalrgbdevice->get_rgb());
-    const CHSV fastled_hsv = rgb2hsv_approximate(fastled_rgb);
+    CHSV fastled_hsv = internalrgbdevice->getHSV();
 
-    power->setVal(internalrgbdevice->get_power());
+    power->setVal(internalrgbdevice->getPower());
     H->setVal(fastled_hsv.hue * 360 / 255);
     S->setVal(fastled_hsv.saturation * 100 / 255);
     V->setVal(fastled_hsv.value * 100 / 255);
@@ -75,7 +74,7 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
     float new_v = V->getVal<float>();
 
     if (power->updated()) {
-      internalrgbdevice->set_power(power->getNewVal(), FrontEnd::HomeKit);
+      internalrgbdevice->setPower(power->getNewVal(), FrontEnd::HomeKit);
     }
 
     if (H->updated()) {
@@ -96,9 +95,7 @@ struct HOMEKIT_RGBLED : Service::LightBulb {
     const uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
     const uint8_t uint_s = uint8_t(new_s * 255 / 100);
     const uint8_t uint_v = uint8_t(new_v * 255 / 100);
-    hsv2rgb_rainbow(CHSV(uint_h, uint_s, uint_v), fastled_rgb);
-    if (debug) Serial.println("HomeKit r: " + String(fastled_rgb.r) + " g: " + String(fastled_rgb.g) + " b: " + String(fastled_rgb.b));
-    internalrgbdevice->set_rgb(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, FrontEnd::HomeKit);
+    internalrgbdevice->setHSV(CHSV(uint_h, uint_s, uint_v), FrontEnd::HomeKit);
   }
 
 };

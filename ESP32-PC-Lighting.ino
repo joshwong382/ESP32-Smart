@@ -68,7 +68,7 @@ CRGB leds[NUM_LEDS];
 RGBDevice desk_led = RGBDevice("desk_led");
 HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
-AsyncWebServer server(9999);
+WebServer server = WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
 
 void setup() {
   Serial.begin(115200);
@@ -82,9 +82,6 @@ void setup() {
 
   ledcSetup(BLUECHANNEL, ANALOG_FREQ, ANALOG_RESOLUTION);
   ledcAttachPin(BLUEPIN, BLUECHANNEL);
-
-  //if (debug) Serial.println("Setting up TLC57911...");
-  //tlc.initializeTLC();
   
   pinMode(MUSIC_TRIG, INPUT_PULLUP);
 
@@ -99,7 +96,8 @@ void setup() {
   desk_led_homekit = new HOMEKIT_RGBLED(&desk_led);
   
   // Web Server
-  init_webserver(&server, &desk_led, &music_led);
+  smartDevices.add(&desk_led);
+  smartDevices.add(&music_led);
   server.begin();
 }
 
@@ -124,7 +122,7 @@ void loop() {
   }
 
   // Normal Desk LED Status
-  const FrontEnd update_frontend = desk_led.status_changed();
+  const FrontEnd update_frontend = desk_led.statusChanged();
   const bool update = static_cast<bool>(update_frontend);
   digitalDeskLED(update, rainbow_hue);
   analogDeskLED(update, rainbow_hue);
@@ -145,16 +143,16 @@ void homekit_loop(const FrontEnd update) {
 void analogDeskLED(const bool update, const uint8_t rainbow_hue) {
 
   // Check Off
-  if (!desk_led.get_power() && update) {
+  if (!desk_led.getPower() && update) {
     setAnalogRGB(0, 0, 0, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
     if (debug) Serial.println("Analog OFF");
     return;
   }
 
-  uint32_t desk_led_rgb = desk_led.get_rgb();
+  uint32_t desk_led_rgb = desk_led.getRGB();
 
   // Rainbow
-  if (desk_led.get_power() && desk_led_rgb == 0xffffff) {
+  if (desk_led.getPower() && desk_led_rgb == 0xffffff) {
     EVERY_N_MILLISECONDS(1000/ANALOG_RAINBOW_HZ) {
       CRGB rgb;
       hsv2rgb_rainbow(CHSV(rainbow_hue,255,255), rgb);
@@ -173,7 +171,7 @@ void analogDeskLED(const bool update, const uint8_t rainbow_hue) {
 void digitalDeskLED(const bool update, const uint8_t rainbow_hue) {
 
   // Check Off
-  if (!desk_led.get_power() && update) {
+  if (!desk_led.getPower() && update) {
     for (int i=0; i<NUM_LEDS; i++) {
       leds[i] = CRGB::Black;
     }
@@ -182,10 +180,10 @@ void digitalDeskLED(const bool update, const uint8_t rainbow_hue) {
     return;
   }
 
-  const uint32_t desk_led_rgb = desk_led.get_rgb();
+  const uint32_t desk_led_rgb = desk_led.getRGB();
 
   // Rainbow
-  if (desk_led.get_power() && desk_led_rgb == 0xffffff) {
+  if (desk_led.getPower() && desk_led_rgb == 0xffffff) {
       EVERY_N_MILLISECONDS(1000/DIGITAL_RAINBOW_HZ) {
         //if (debug) Serial.println("Rainbow digital");
         fill_rainbow(leds, NUM_LEDS, rainbow_hue, HUE_WIDTH);
@@ -206,7 +204,7 @@ void digitalDeskLED(const bool update, const uint8_t rainbow_hue) {
 
 // Returns true when music overrides normal LED
 const uint8_t musicLED() {
-  if (music_led.get_power() == PWR_ON) {
+  if (music_led.getPower() == PWR_ON) {
     static bool last_music;
     const bool current_music = !digitalRead(MUSIC_TRIG);
 
@@ -276,6 +274,7 @@ void setAnalogRGB(const uint32_t rgb, const uint8_t red_channel, const uint8_t g
   setAnalogRGB(r, g, b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 }
 
+/*
 void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevice *music_led) {
 
   server->onNotFound([](AsyncWebServerRequest *request) {
@@ -283,10 +282,10 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
   });
 
   server->on("/", HTTP_GET, [desk_led, music_led](AsyncWebServerRequest *request) {
-    String read1 = desk_led->get_power() ? String(desk_led->get_brightness_percent()) + "%" : "OFF";
-    String read2 = desk_led->get_power() ? "off" : "on";
-    String read3 = music_led->get_power() ? String(music_led->get_brightness_percent()) + "%" : "OFF";
-    String read4 = music_led->get_power() ? "off" : "on";
+    String read1 = desk_led->getPower() ? String(desk_led->getBrightnessPercent()) + "%" : "OFF";
+    String read2 = desk_led->getPower() ? "off" : "on";
+    String read3 = music_led->getPower() ? String(music_led->getBrightnessPercent()) + "%" : "OFF";
+    String read4 = music_led->getPower() ? "off" : "on";
     String response_html = "";
     response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
     response_html += "<style>@font-face { font-family: rubrik; src: url(https://edev.i.lithium.com/html/assets/Rubrik_Regular.otf); }";
@@ -304,22 +303,22 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
 
   server->on("/metrics", HTTP_GET, [desk_led, music_led](AsyncWebServerRequest *request) {
     String response_html = "# Prometheus Metrics";
-    response_html += "\ndesk_led " + String(desk_led->get_brightness_percent());
-    response_html += "\nmusic_led " + String(music_led->get_brightness_percent());
+    response_html += "\ndesk_led " + String(desk_led->getBrightnessPercent());
+    response_html += "\nmusic_led " + String(music_led->getBrightnessPercent());
     AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", response_html);
     request->send(response);
   });
 
   server->on("/led/on", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
     
-    desk_led->set_power(PWR_ON, FrontEnd::HTTP_API);
+    desk_led->setPower(PWR_ON, FrontEnd::HTTP_API);
 
     if (request->hasParam("color")) {
       String color = request->getParam("color")->value();
       char color_arr[7];
       color.toCharArray(color_arr, 7);
       uint32_t rgb = strtol(color_arr, NULL, 16);
-      desk_led->set_rgb(rgb, FrontEnd::HTTP_API);
+      desk_led->setRGB(rgb, FrontEnd::HTTP_API);
       
       AsyncWebServerResponse *response = request->beginResponse(302);
       //response->addHeader("RGB: R: ", colorinttohexstr(r) + "G: " + colorinttohexstr(g) + "B: " + colorinttohexstr(b));
@@ -333,7 +332,7 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
       if (brightness >= 0 || brightness <= 100) {
-        desk_led->set_brightness_percent(brightness, FrontEnd::HTTP_API);
+        desk_led->setBrightnessPercent(brightness, FrontEnd::HTTP_API);
       }
     }
 
@@ -341,20 +340,20 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
   });
 
   server->on("/led/off", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    desk_led->set_power(PWR_OFF, FrontEnd::HTTP_API);
+    desk_led->setPower(PWR_OFF, FrontEnd::HTTP_API);
     request->redirect("/");
   });
 
   server->on("/led/status", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led->get_power()));
+    request->send(200, "text/plain", String(desk_led->getPower()));
   });
 
   server->on("/led/brightness", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led->get_brightness_percent()));
+    request->send(200, "text/plain", String(desk_led->getBrightnessPercent()));
   });
 
   server->on("/led/color", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    String rgb = desk_led->get_rgb_str();
+    String rgb = desk_led->getRGBStr();
     request->send(200, "text/plain", rgb);
   });
 
@@ -363,7 +362,7 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
     if (request->hasParam("brightness")) {
       brightness = request->getParam("brightness")->value().toInt();
       if (brightness >= 0 || brightness <= 100) {
-        music_led->set_brightness_percent(brightness, FrontEnd::HTTP_API);
+        music_led->setBrightnessPercent(brightness, FrontEnd::HTTP_API);
       }
     }
     
@@ -371,15 +370,16 @@ void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevic
   });
 
   server->on("/music/off", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    music_led->set_power(PWR_OFF, FrontEnd::HTTP_API);
+    music_led->setPower(PWR_OFF, FrontEnd::HTTP_API);
     request->redirect("/");
   });
 
   server->on("/music/status", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led->get_power()));
+    request->send(200, "text/plain", String(music_led->getPower()));
   });
 
   server->on("/music/brightness", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led->get_brightness_percent()));
+    request->send(200, "text/plain", String(music_led->getBrightnessPercent()));
   });
 }
+*/
