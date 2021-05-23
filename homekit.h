@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <HomeSpan.h>
-#include "smartdevice.h"
+#include "smartdevices.h"
 #include "frontend.h"
 
 static bool homespan_init = false;

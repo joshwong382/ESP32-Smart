@@ -90,6 +90,7 @@
         "variant": "cpp",
         "cfenv": "cpp",
         "cinttypes": "cpp",
-        "memory_resource": "cpp"
+        "memory_resource": "cpp",
+        "__functional_base_03": "cpp"
     }
 }

@@ -2,7 +2,8 @@
 #include <functional>
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include "smartdevice.h"
+#include "smartdevices.h"
+#include "smartsensors.h"
 
 #define DEFAULT_PORT 9999
 

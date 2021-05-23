@@ -1,4 +1,4 @@
-#include "smartdevice.h"
+#include "smartdevices.h"
 
 LinkedList<SmartDevice*> smartDevices([](const SmartDevice* dev) {
     delete dev;

@@ -20,7 +20,10 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
-#include "smartdevice.h"
+#include "sensitivedata.h"
+#include "smartdevices.h"
+#include "smartsensors.h"
+#include "OpenWeatherMap.h"
 #include "webserver.h"
 #include "homekit.h"
 
@@ -68,6 +71,7 @@ CRGB leds[NUM_LEDS];
 RGBDevice desk_led = RGBDevice("desk_led");
 HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
+OpenWeatherMap outdoor_weather = OpenWeatherMap("openweathermap", sensitive_cityid, sensitive_openweathermap_api);
 WebServer server = WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
 
 void setup() {
@@ -98,10 +102,12 @@ void setup() {
   // Web Server
   smartDevices.add(&desk_led);
   smartDevices.add(&music_led);
+  smartSensors.add(&outdoor_weather);
   server.begin();
 }
 
 void loop() {
+  outdoor_weather.loop();
 
   uint8_t music_status = musicLED();
   static uint8_t rainbow_hue = 0;
@@ -273,113 +279,3 @@ void setAnalogRGB(const uint32_t rgb, const uint8_t red_channel, const uint8_t g
   b = rgb & 0xFF;
   setAnalogRGB(r, g, b, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 }
-
-/*
-void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevice *music_led) {
-
-  server->onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect("/");
-  });
-
-  server->on("/", HTTP_GET, [desk_led, music_led](AsyncWebServerRequest *request) {
-    String read1 = desk_led->getPower() ? String(desk_led->getBrightnessPercent()) + "%" : "OFF";
-    String read2 = desk_led->getPower() ? "off" : "on";
-    String read3 = music_led->getPower() ? String(music_led->getBrightnessPercent()) + "%" : "OFF";
-    String read4 = music_led->getPower() ? "off" : "on";
-    String response_html = "";
-    response_html += "<head><meta name='viewport' content='width=device-width, initial-scale=1'>";
-    response_html += "<style>@font-face { font-family: rubrik; src: url(https://edev.i.lithium.com/html/assets/Rubrik_Regular.otf); }";
-    response_html += "* { font-family: rubrik; } </style></head>";
-    response_html += "<body><table style='font-size: 18px;'>";
-    response_html += "<tr><td style='text-align: right;'>LED:</td><td>" + read1 + "</td><td>&emsp;<a href=\"/led/" + read2 + "\">Turn " + read2 + "</a></td></tr>";
-    response_html += "<tr><td style='text-align: right;'>Music LED:</td><td>" + read3 + "</td><td>&emsp;<a href=\"/music/" + read4 + "\">Turn " + read4 + "</a></td></tr>";
-    response_html += "</table></body></html>";
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_html);
-    response->addHeader("System", "NodeMCU 1.0");
-    response->addHeader("Product", "PC RGB Controller");
-    response->addHeader("Designer", "C.H.J. WONG");
-    request->send(response);
-  });
-
-  server->on("/metrics", HTTP_GET, [desk_led, music_led](AsyncWebServerRequest *request) {
-    String response_html = "# Prometheus Metrics";
-    response_html += "\ndesk_led " + String(desk_led->getBrightnessPercent());
-    response_html += "\nmusic_led " + String(music_led->getBrightnessPercent());
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", response_html);
-    request->send(response);
-  });
-
-  server->on("/led/on", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    
-    desk_led->setPower(PWR_ON, FrontEnd::HTTP_API);
-
-    if (request->hasParam("color")) {
-      String color = request->getParam("color")->value();
-      char color_arr[7];
-      color.toCharArray(color_arr, 7);
-      uint32_t rgb = strtol(color_arr, NULL, 16);
-      desk_led->setRGB(rgb, FrontEnd::HTTP_API);
-      
-      AsyncWebServerResponse *response = request->beginResponse(302);
-      //response->addHeader("RGB: R: ", colorinttohexstr(r) + "G: " + colorinttohexstr(g) + "B: " + colorinttohexstr(b));
-      //response->addHeader("HSV", String(hue) + "," + String(sat) + "," + String(br));
-      response->addHeader("Location", "/");
-      request->send(response);
-      return;
-    }
-
-    int brightness = -1;
-    if (request->hasParam("brightness")) {
-      brightness = request->getParam("brightness")->value().toInt();
-      if (brightness >= 0 || brightness <= 100) {
-        desk_led->setBrightnessPercent(brightness, FrontEnd::HTTP_API);
-      }
-    }
-
-    request->redirect("/");
-  });
-
-  server->on("/led/off", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    desk_led->setPower(PWR_OFF, FrontEnd::HTTP_API);
-    request->redirect("/");
-  });
-
-  server->on("/led/status", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led->getPower()));
-  });
-
-  server->on("/led/brightness", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(desk_led->getBrightnessPercent()));
-  });
-
-  server->on("/led/color", HTTP_GET, [desk_led](AsyncWebServerRequest *request) {
-    String rgb = desk_led->getRGBStr();
-    request->send(200, "text/plain", rgb);
-  });
-
-  server->on("/music/on", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    int brightness = -1;
-    if (request->hasParam("brightness")) {
-      brightness = request->getParam("brightness")->value().toInt();
-      if (brightness >= 0 || brightness <= 100) {
-        music_led->setBrightnessPercent(brightness, FrontEnd::HTTP_API);
-      }
-    }
-    
-    request->redirect("/");
-  });
-
-  server->on("/music/off", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    music_led->setPower(PWR_OFF, FrontEnd::HTTP_API);
-    request->redirect("/");
-  });
-
-  server->on("/music/status", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led->getPower()));
-  });
-
-  server->on("/music/brightness", HTTP_GET, [music_led](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", String(music_led->getBrightnessPercent()));
-  });
-}
-*/

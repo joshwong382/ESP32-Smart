@@ -55,13 +55,33 @@ void WebServer::enablePromMetrics(const bool enable) {
 
 AsyncWebHandler& WebServer::setPromPage() {
     return setWebPage("/metrics", "text/plain", []() -> String {
-        String response_html = "# Prometheus Metrics";
-        for (auto devices_it = smartDevices.begin(); devices_it != smartDevices.end(); ++devices_it) {
-            const String name = (*devices_it)->getName();
-            const String brightness = String((*devices_it)->getBrightnessPercent());
-            response_html += "\n" + name + " " + brightness;
+        
+        String html = "# Prometheus Metrics";
+
+        // Smart Devices
+        for (auto it = smartDevices.begin(); it != smartDevices.end(); ++it) {
+            const String name = (*it)->getName();
+            const String brightness = String((*it)->getBrightnessPercent());
+            html += "\n" + name + " " + brightness;
         }
-        return response_html;
+
+        // Smart Sensors
+        for (auto it = smartSensors.begin(); it != smartSensors.end(); ++it) {
+            switch ((*it)->type) {
+                case SensorTypes::Weather: {
+                    Weather *weather_dev = (Weather*) *it;
+                    const String name = weather_dev->getName();
+                    const double temp = weather_dev->getTemp();
+                    const double humid = weather_dev->getHumidity();
+                    if (temp != WEATHER_UNDEFINED) html += "\ntemp_" + name + " " + String(temp);
+                    if (humid != WEATHER_UNDEFINED) html += "\nhumidity_" + name + " " + String(humid);
+                }
+                default:
+                    break;
+            }
+        }
+
+        return html;
     });
 }
 

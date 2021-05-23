@@ -21,26 +21,26 @@ enum class Backend {
 class SmartDevice {
 
     protected:
+        String name;
+        bool power;
+        FrontEnd status_changed_var;
+
         SmartDevice(const String _name, const Backend _type);
+
+    private:
         void constructor(const String& _name);
 
     public:
-        SmartDevice(const String _name);
         const Backend type;
 
+        SmartDevice(const String _name);
         const bool getPower() const;
         virtual const uint8_t getBrightnessPercent() const;
         void setPower(const bool _power, const FrontEnd deviceid);
         const bool flipPower(const FrontEnd deviceid);
         const String getName() const;
         const FrontEnd statusChanged();
-
-    private:
-        String name;
-        bool power;
-
-    protected:
-        FrontEnd status_changed_var;
+        
 };
 
 
