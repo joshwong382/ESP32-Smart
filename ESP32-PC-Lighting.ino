@@ -64,14 +64,13 @@ void digitalMusicLED();
 void setAnalogRGB(const uint8_t red, const uint8_t blue, const uint8_t green, const uint8_t red_channel, const uint8_t green_channel, const uint8_t blue_channel);
 void setAnalogRGB(const uint32_t rgb, const uint8_t red_channel, const uint8_t green_channel, const uint8_t blue_channel);
 
-void init_webserver(AsyncWebServer *server, RGBDevice *desk_led, BrightnessDevice *music_led);
-
 //TLC5971 tlc;
 CRGB leds[NUM_LEDS];
 RGBDevice desk_led = RGBDevice("desk_led");
 HOMEKIT_RGBLED *desk_led_homekit;
 BrightnessDevice music_led = BrightnessDevice("music_led");
-OpenWeatherMap outdoor_weather = OpenWeatherMap("openweathermap", sensitive_cityid, sensitive_openweathermap_api);
+Weather outdoor_weather = Weather("openweathermap");
+OpenWeatherMap openweathermap = OpenWeatherMap(&outdoor_weather, sensitive_cityid, sensitive_openweathermap_api);
 WebServer server = WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
 
 void setup() {
@@ -107,7 +106,7 @@ void setup() {
 }
 
 void loop() {
-  outdoor_weather.loop();
+  openweathermap.loop();
 
   uint8_t music_status = musicLED();
   static uint8_t rainbow_hue = 0;

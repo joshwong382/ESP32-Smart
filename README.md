@@ -25,6 +25,7 @@ Special Features:
 ## Newest Changes
 - Rewrite SmartDevice to classes
 - Rewrite WebServer to a class
+- Added OpenWeatherMap for outdoor weather
 
 ## Future Changes
 - Rewrite FrontEnd base class

@@ -73,8 +73,8 @@ AsyncWebHandler& WebServer::setPromPage() {
                     const String name = weather_dev->getName();
                     const double temp = weather_dev->getTemp();
                     const double humid = weather_dev->getHumidity();
-                    if (temp != WEATHER_UNDEFINED) html += "\ntemp_" + name + " " + String(temp);
-                    if (humid != WEATHER_UNDEFINED) html += "\nhumidity_" + name + " " + String(humid);
+                    if (temp > ABSOLUTE_ZERO) html += "\ntemp_" + name + " " + String(temp);
+                    if (humid > 0) html += "\nhumidity_" + name + " " + String(humid);
                 }
                 default:
                     break;

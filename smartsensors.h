@@ -3,6 +3,7 @@
 #include <ESPAsyncWebServer.h>    // ESPAsyncWebServer implementation of LinkedList
 #include <Arduino.h>
 #define WEATHER_UNDEFINED -1000
+#define ABSOLUTE_ZERO -273.15
 
 class SmartSensorBase;
 class Weather;
@@ -21,14 +22,18 @@ class SmartSensorBase {
         
         SmartSensorBase(const String _name);
         const String getName() const;
-        virtual void loop() = 0;      // Automatic Periodic Update
-        virtual void update() = 0;    // Manual Update
+        const unsigned getFailureCount() const;
+        const unsigned long getLastUpdate() const;
+        const unsigned long getExpirySeconds() const;
+        void incrementFailureCount();
+        void resetLastUpdate();
         void setExpirySeconds(const unsigned long expiry);
 
     protected:
         const String name;
         unsigned long last_update;
         unsigned long expiry_s;
+        unsigned failure_count;
 
         SmartSensorBase(const String _name, const SensorTypes _type);
 
@@ -37,18 +42,18 @@ class SmartSensorBase {
 };
 
 class Weather : public SmartSensorBase {
-    
+
     public:
         Weather(const String _name);
-        virtual void loop() = 0;
-        virtual void update() = 0;
         const double getTemp() const;
         const double getHumidity() const;
+        void setTemp(const double _temp);           // failure_count resets if setTemp succeeds. It ignores setHumidity.
+        void setHumidity(const double _humid);
+        const bool isExpired() const;
 
     protected:
         double temp;
         double humid;
-        const bool isExpired() const;
 };
 
 // Move to own file

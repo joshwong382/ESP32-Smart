@@ -2,13 +2,13 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "smartsensors.h"
-#define ABSOLUTE_ZERO -273.15
+#include "driver.h"
 #define BASE_URL "http://api.openweathermap.org/data/2.5/weather"
 
-class OpenWeatherMap : public Weather {
+class OpenWeatherMap : public SensorDriver {
 
     public:
-        OpenWeatherMap(const String name, const unsigned& _city_id, const String& _api_key);
+        OpenWeatherMap(Weather *_dev, const unsigned& _city_id, const String& _api_key);
         void loop();
         void update();                              // Failure only occurs when temperature is missing
         void setAPIKey(const String& _api_key);
@@ -18,6 +18,7 @@ class OpenWeatherMap : public Weather {
         String api_key;
         unsigned city_id;
         unsigned failure_count;
+        Weather* const getDev();
         const bool jsonToPositiveDouble(const JsonVariant& json_variant, double& value) const;
         const String createURL(const unsigned& city_id, const String& api_key) const;
         const bool httpRequest(String& response) const;

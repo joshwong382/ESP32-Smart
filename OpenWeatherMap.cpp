@@ -8,27 +8,30 @@
 "timezone":-12500,"id":6016513,"name":"Redacted","cod":200}
 */
 
-OpenWeatherMap::OpenWeatherMap(const String _name, const unsigned& _city_id, const String& _api_key) : Weather(_name) {
+OpenWeatherMap::OpenWeatherMap(Weather *_dev, const unsigned& _city_id, const String& _api_key) : SensorDriver(_dev) {
     api_key = _api_key;
     city_id = _city_id;
-    failure_count = 0;
 }
 
 void OpenWeatherMap::loop() {
+
+    auto failure_count = getDev()->getFailureCount();
+
+    // If no failure, refresh in expiry/5
     if (failure_count == 0) {
-        if (millis() - last_update < (expiry_s * 1000 / 5)) return;
+        if (millis() - getDev()->getLastUpdate() < (getDev()->getExpirySeconds() * 1000 / 5)) return;
         update();
         return;
     }
     
-    // Previous Failures
-    if (isExpired()) {
+    // Previous Failures, refresh when expired
+    if (getDev()->isExpired()) {
         update();
 
         // Failed after expiry
         if (failure_count > 0) {
-            temp = WEATHER_UNDEFINED;
-            humid = WEATHER_UNDEFINED;
+            getDev()->setTemp(WEATHER_UNDEFINED);
+            getDev()->setHumidity(WEATHER_UNDEFINED);
         }
     }
 }
@@ -37,16 +40,15 @@ void OpenWeatherMap::update() {
 
     if (WiFi.status() != WL_CONNECTED) return;
 
-    failure_count++;
     String json_response;
-    const bool success = httpRequest(json_response);
-    last_update = millis();
+    getDev()->incrementFailureCount();
+    httpRequest(json_response);
+    getDev()->resetLastUpdate();
 
     // Parse JSON
     DynamicJsonDocument json(2048);
     DeserializationError error = deserializeJson(json, json_response.c_str());
     if (error) {
-        Serial.println("Get OpenWeatherMap data failure count: " + String(failure_count));
         return;
     }
 
@@ -56,14 +58,12 @@ void OpenWeatherMap::update() {
     double _temp;
     double _humid;
 
-    // Only fail if no temperature
     if (jsonToPositiveDouble(temp_json, _temp)) {
-        temp = _temp + ABSOLUTE_ZERO;
-        failure_count = 0;
+        getDev()->setTemp(_temp + ABSOLUTE_ZERO);
     }
 
     if (jsonToPositiveDouble(humid_json, _humid)) {
-        humid = _humid;
+        getDev()->setHumidity(_humid);
     }
 }
 
@@ -73,6 +73,10 @@ void OpenWeatherMap::setAPIKey(const String& _api_key) {
 
 void OpenWeatherMap::setCityID(const unsigned& _city_id) {
     city_id = _city_id;
+}
+
+Weather* const OpenWeatherMap::getDev() {
+    return (Weather*) dev;
 }
 
 const bool OpenWeatherMap::jsonToPositiveDouble(const JsonVariant& json_variant, double& value) const {
