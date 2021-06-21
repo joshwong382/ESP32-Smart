@@ -1,7 +1,9 @@
 #include "webserver.h"
 
-WebServer::WebServer(unsigned port, const String _manufacturer, const String _model, const String _serial)
-        : manufacturer {_manufacturer}, model {_model}, serial {_serial} {
+WebServer::WebServer(unsigned port, const String _manufacturer, const String _model, const String _serial) :
+            manufacturer {_manufacturer},
+            model {_model},
+            serial {_serial} {
 
     if (port < 1 || port > 65535) port = DEFAULT_PORT;
     webserver = new AsyncWebServer(port);

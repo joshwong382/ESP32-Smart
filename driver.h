@@ -1,20 +1,31 @@
+#pragma once
 #include "smartdevices.h"
 #include "smartsensors.h"
 
 class DeviceDriver {
 
     protected:
-        const SmartDevice* dev;
+        SmartDevice* const dev;
 
     public:
         DeviceDriver(SmartDevice* _dev);
         virtual void loop() = 0;
 };
 
+class MusicDeviceDriver : public DeviceDriver {
+
+    protected:
+        MusicRGBDevice* const musicdev;
+
+    public:
+        MusicDeviceDriver(RGBDevice* _dev, MusicRGBDevice* _musicdev);
+        virtual void loop() = 0;
+};
+
 class SensorDriver {
 
     protected:
-        const SmartSensorBase* dev;
+        SmartSensorBase* const dev;
 
     public:
         SensorDriver(SmartSensorBase* _dev);

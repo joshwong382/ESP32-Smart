@@ -5,11 +5,15 @@ LinkedList<SmartSensorBase*> smartSensors([](const SmartSensorBase* dev) {
     delete dev;
 });
 
-SmartSensorBase::SmartSensorBase(const String _name) : name {_name}, type {SensorTypes::SmartSensorBase} {
+SmartSensorBase::SmartSensorBase(const String _name) :
+            name {_name},
+            type {SensorTypes::SmartSensorBase} {
     constructor();
 }
 
-SmartSensorBase::SmartSensorBase(const String _name, const SensorTypes _type) : name {_name}, type {_type} {
+SmartSensorBase::SmartSensorBase(const String _name, const SensorTypes _type) :
+            name {_name},
+            type {_type} {
     constructor();
 }
 

@@ -8,10 +8,17 @@ SmartDevice::SmartDevice(const String _name, const Backend _type) : type {_type}
     constructor(_name);
 }
 
+void SmartDevice::updateStatusChanged(const FrontEnd deviceid) {
+    for (int i=0; i<MAX_DRIVERS; i++) {
+        status_changed_var[i] = deviceid;
+    }
+}
+
 void SmartDevice::constructor(const String& _name) {
     name = _name;
     power = PWR_OFF;
-    status_changed_var = FrontEnd::UpdateAll;
+
+    updateStatusChanged(FrontEnd::UpdateAll);
 }
 
 SmartDevice::SmartDevice(const String _name) : type {Backend::SmartDevice} {
@@ -27,12 +34,12 @@ const uint8_t SmartDevice::getBrightnessPercent() const {
 }
 
 void SmartDevice::setPower(const bool _power, const FrontEnd deviceid) {
-    status_changed_var = deviceid;
+    updateStatusChanged(deviceid);
     power = _power;
 }
 
 const bool SmartDevice::flipPower(const FrontEnd deviceid) {
-    status_changed_var = deviceid;
+    updateStatusChanged(deviceid);
     return power = !power;
 }
 
@@ -40,16 +47,21 @@ const String SmartDevice::getName() const {
     return name;
 }
 
-const FrontEnd SmartDevice::statusChanged() {
-    FrontEnd temp_status = status_changed_var;
-    status_changed_var = FrontEnd::None;
+const FrontEnd SmartDevice::statusChanged(const unsigned driver_id) {
+
+    if (driver_id >= MAX_DRIVERS) return FrontEnd::None;
+
+    FrontEnd temp_status = status_changed_var[driver_id];
+    status_changed_var[driver_id] = FrontEnd::None;
     return temp_status;
 }
 
 // BrightnessDevice
 
 BrightnessDevice::BrightnessDevice(const String _name, const Backend _type) : SmartDevice(_name, _type) {}
-BrightnessDevice::BrightnessDevice(const String _name) : SmartDevice(_name, Backend::BrightnessDevice) {
+BrightnessDevice::BrightnessDevice(const String _name) :
+            SmartDevice(_name,
+            Backend::BrightnessDevice) {
     brightness = 100;
 }
 
@@ -58,8 +70,8 @@ const uint8_t BrightnessDevice::getBrightnessPercent() const {
 }
 
 void BrightnessDevice::setBrightnessPercent(const uint8_t _brightness, const FrontEnd deviceid) {
-    Serial.println("brightness request: " + String(_brightness) + " from device " + String(static_cast<int>(deviceid)));
-    status_changed_var = deviceid;
+    //Serial.println("brightness request: " + String(_brightness) + " from device " + String(static_cast<int>(deviceid)));
+    updateStatusChanged(deviceid);
 
     if (_brightness == 0)
         setPower(PWR_OFF, FrontEnd::None);
@@ -91,8 +103,7 @@ const String RGBDevice::getRGBStr() const {
 }
 
 void RGBDevice::setRGB(const uint32_t rgb, const FrontEnd deviceid) {
-
-    status_changed_var = deviceid;
+    updateStatusChanged(deviceid);
 
     uint8_t r = (rgb >> 16) & 0xFF;
     uint8_t g = (rgb >>  8) & 0xFF;
@@ -102,8 +113,7 @@ void RGBDevice::setRGB(const uint32_t rgb, const FrontEnd deviceid) {
 }
 
 void RGBDevice::setRGB(const uint8_t _r, const uint8_t _g, const uint8_t _b, const FrontEnd deviceid) {
-
-    status_changed_var = deviceid;
+    updateStatusChanged(deviceid);
 
     r = _r;
     g = _g;
@@ -148,4 +158,52 @@ const String RGBDevice::colorAsHEXStr(const uint8_t color) const {
     return "00";
   }
   return a;
+}
+
+MusicRGBDevice::MusicRGBDevice(const String _name, const uint8_t trigger_pin) : pin{trigger_pin}, RGBDevice(_name) {
+    hue_update_freq = 10;
+    rainbow_hue = 0;
+    pinMode(pin, INPUT_PULLUP);
+}
+
+const MusicStatus MusicRGBDevice::musicStatus() {
+
+    if (!power) {
+        return MusicStatus::IGNORE;
+    }
+
+    static bool last_music;
+    const bool current_music = !digitalRead(pin);
+
+    if (!last_music && !current_music) {
+        last_music = current_music;
+        return MusicStatus::IGNORE;
+    }
+
+    if (last_music && current_music) {
+        last_music = current_music;
+        return MusicStatus::HOLD;
+    }
+
+    if (last_music && !current_music) {
+        last_music = current_music;
+        return MusicStatus::RELEASE;
+    }
+
+    last_music = current_music;
+    return MusicStatus::INITIATE;
+}
+
+const uint8_t MusicRGBDevice::getRainbowHue() {
+    return rainbow_hue;
+}
+
+void MusicRGBDevice::setRainbowHueDebug(uint8_t hue) {
+    rainbow_hue = hue;
+}
+
+void MusicRGBDevice::loop() {
+    EVERY_N_MILLISECONDS(1000/hue_update_freq) {
+        rainbow_hue++;
+    }
 }

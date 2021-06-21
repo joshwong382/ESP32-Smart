@@ -5,6 +5,7 @@
 #include "frontend.h"
 #define PWR_OFF false
 #define PWR_ON true
+#define MAX_DRIVERS 2
 
 class SmartDevice;
 class BrightnessDevice;
@@ -18,14 +19,23 @@ enum class Backend {
     RGBDevice           // switch + brightness + RGB
 };
 
+enum class MusicStatus {
+    IGNORE,
+    INITIATE,
+    RELEASE,
+    HOLD
+};
+
 class SmartDevice {
 
     protected:
         String name;
         bool power;
-        FrontEnd status_changed_var;
+        FrontEnd status_changed_var[MAX_DRIVERS];
 
         SmartDevice(const String _name, const Backend _type);
+        SmartDevice();
+        void updateStatusChanged(const FrontEnd deviceid);
 
     private:
         void constructor(const String& _name);
@@ -36,13 +46,12 @@ class SmartDevice {
         SmartDevice(const String _name);
         const bool getPower() const;
         virtual const uint8_t getBrightnessPercent() const;
-        void setPower(const bool _power, const FrontEnd deviceid);
+        void setPower(const bool _power, const FrontEnd deviceid);      // which FrontEnd triggered the change
         const bool flipPower(const FrontEnd deviceid);
         const String getName() const;
-        const FrontEnd statusChanged();
+        const FrontEnd statusChanged(const unsigned driver_id);
         
 };
-
 
 class BrightnessDevice : public SmartDevice {
 
@@ -81,4 +90,19 @@ class RGBDevice : public BrightnessDevice {
         uint8_t b;
         const String colorAsHEXStr(uint8_t color) const;
 
+};
+
+class MusicRGBDevice : public RGBDevice {
+
+    public:
+        MusicRGBDevice(const String _name, const uint8_t trigger_pin);
+        const MusicStatus musicStatus();
+        const uint8_t getRainbowHue();
+        void setRainbowHueDebug(uint8_t hue);
+        void loop();
+
+    private:
+        const uint8_t pin;
+        uint8_t rainbow_hue;
+        unsigned hue_update_freq;
 };

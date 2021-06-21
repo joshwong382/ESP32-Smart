@@ -23,11 +23,13 @@ Special Features:
 - RGB Rainbow mode
 
 ## Newest Changes
-- Rewrite SmartDevice to classes
+- Rewrite Analog RGB to OOP
 - Rewrite WebServer to a class
 - Added OpenWeatherMap for outdoor weather
 
 ## Future Changes
+- Rewrite Digital RGB to OOP
+- Rewrite HomeKit to OOP
 - Rewrite FrontEnd base class
 - Rewrite Backends to classes
 - Change how device capabilities are defined
