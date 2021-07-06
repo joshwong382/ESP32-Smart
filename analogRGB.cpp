@@ -39,7 +39,6 @@ void AnalogRGB::loop() {
 }
 
 void AnalogRGB::RGBLogic(const bool update, const uint8_t rainbow_hue) {
-
     if (!dev->getPower() && update) {
         // Off
         setRGB(0, 0, 0);

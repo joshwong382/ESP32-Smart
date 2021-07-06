@@ -5,7 +5,7 @@
 #include "frontend.h"
 #define PWR_OFF false
 #define PWR_ON true
-#define MAX_DRIVERS 2
+#define MAX_DRIVERS 3
 
 class SmartDevice;
 class BrightnessDevice;

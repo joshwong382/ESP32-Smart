@@ -32,3 +32,24 @@ class SensorDriver {
         virtual void loop() = 0;
         virtual void update() = 0;
 };
+
+template<typename T>
+class DriverMonitorFrontEndUpdatable {
+
+    private:
+        T value;
+        T default_value;
+
+    public:
+        DriverMonitorFrontEndUpdatable(T& t);
+        const T getReset();
+        void set(T& t);
+
+};
+
+template<typename T>
+class DriverMonitorFrontEndUpdatableDelegate {
+
+
+
+};
