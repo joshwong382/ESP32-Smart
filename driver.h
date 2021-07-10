@@ -1,8 +1,9 @@
 #pragma once
 #include "smartdevices.h"
 #include "smartsensors.h"
+#include "loopable.h"
 
-class DeviceDriver {
+class DeviceDriver : public Loopable {
 
     protected:
         SmartDevice* const dev;
@@ -22,7 +23,7 @@ class MusicDeviceDriver : public DeviceDriver {
         virtual void loop() = 0;
 };
 
-class SensorDriver {
+class SensorDriver : public Loopable {
 
     protected:
         SmartSensorBase* const dev;

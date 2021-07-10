@@ -12,23 +12,37 @@ DigitalRGB::DigitalRGB(RGBDevice* _dev, MusicRGBDevice* _musicdev, CLEDControlle
 }
 
 void DigitalRGB::loop() {
-    MusicStatus music_status = musicdev->musicStatus();
+    MusicStatus music_status = musicdev->music_status;
     const uint8_t rainbow_hue = musicdev->getRainbowHue();
 
     if (music_status == MusicStatus::HOLD) {
         return;
     }
 
+    // Apply non-music color without notifying
     if (music_status == MusicStatus::RELEASE) {
-        RGBLogic(true, rainbow_hue);
+        RGBLogic(true, rainbow_hue, false);
     }
 
-    const FrontEnd update_frontend = dev->statusChanged(1);
-    const bool update = static_cast<bool>(update_frontend);
-    RGBLogic(update, rainbow_hue);
+    // Apply music color
+    if (music_status == MusicStatus::INITIATE) {
+        RGBLogic(true, rainbow_hue, true);
+    }
+
+    // We don't care about update notification
+    const bool update = static_cast<bool>(dev->statusChanged(0));
+    RGBLogic(update, rainbow_hue, false);
 }
 
-void DigitalRGB::RGBLogic(const bool update, const uint8_t rainbow_hue) {
+void DigitalRGB::RGBLogic(const bool update, const uint8_t rainbow_hue, const bool music) {
+
+    // Music overrides RGB power (Control with musicRGB power)
+    if (music) {
+        if (musicdev == NULL) return;
+        setSingleColor(musicdev->getRGB());
+        return;
+    }
+
     if (!dev->getPower() && update) {
         // Off
         setSingleColor(CRGB::Black);

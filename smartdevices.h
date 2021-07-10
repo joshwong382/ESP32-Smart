@@ -1,8 +1,8 @@
 #pragma once
-#include <ESPAsyncWebServer.h>    // ESPAsyncWebServer implementation of LinkedList
 #include <Arduino.h>
 #include <FastLED.h>
 #include "frontend.h"
+#include "loopable.h"
 #define PWR_OFF false
 #define PWR_ON true
 #define MAX_DRIVERS 3
@@ -92,17 +92,19 @@ class RGBDevice : public BrightnessDevice {
 
 };
 
-class MusicRGBDevice : public RGBDevice {
+class MusicRGBDevice : public RGBDevice, Loopable {
 
     public:
         MusicRGBDevice(const String _name, const uint8_t trigger_pin);
-        const MusicStatus musicStatus();
         const uint8_t getRainbowHue();
         void setRainbowHueDebug(uint8_t hue);
         void loop();
+        MusicStatus music_status;
 
     private:
-        const uint8_t pin;
+        const MusicStatus getMusicStatus();
+        bool last_music;                // Last pin state of MusicTrig
+        const uint8_t pin;              // Pin number
         uint8_t rainbow_hue;
         unsigned hue_update_freq;
 };

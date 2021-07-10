@@ -2,6 +2,7 @@
 
 #include <ESPAsyncWebServer.h>    // ESPAsyncWebServer implementation of LinkedList
 #include <Arduino.h>
+#include "loopable.h"
 #define WEATHER_UNDEFINED -1000
 #define ABSOLUTE_ZERO -273.15
 

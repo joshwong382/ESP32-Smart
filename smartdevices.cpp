@@ -1,7 +1,9 @@
 #include "smartdevices.h"
 
 LinkedList<SmartDevice*> smartDevices([](const SmartDevice* dev) {
-    delete dev;
+    if (dev != NULL) {
+        delete dev;
+    }
 });
 
 SmartDevice::SmartDevice(const String _name, const Backend _type) : type {_type} {
@@ -163,16 +165,32 @@ const String RGBDevice::colorAsHEXStr(const uint8_t color) const {
 MusicRGBDevice::MusicRGBDevice(const String _name, const uint8_t trigger_pin) : pin{trigger_pin}, RGBDevice(_name) {
     hue_update_freq = 10;
     rainbow_hue = 0;
+    last_music = false;
+    music_status = MusicStatus::IGNORE;
     pinMode(pin, INPUT_PULLUP);
 }
 
-const MusicStatus MusicRGBDevice::musicStatus() {
+const uint8_t MusicRGBDevice::getRainbowHue() {
+    return rainbow_hue;
+}
+
+void MusicRGBDevice::setRainbowHueDebug(uint8_t hue) {
+    rainbow_hue = hue;
+}
+
+void MusicRGBDevice::loop() {
+    music_status = getMusicStatus();
+    EVERY_N_MILLISECONDS(1000/hue_update_freq) {
+        rainbow_hue++;
+    }
+}
+
+const MusicStatus MusicRGBDevice::getMusicStatus() {
 
     if (!power) {
         return MusicStatus::IGNORE;
     }
 
-    static bool last_music;
     const bool current_music = !digitalRead(pin);
 
     if (!last_music && !current_music) {
@@ -191,19 +209,8 @@ const MusicStatus MusicRGBDevice::musicStatus() {
     }
 
     last_music = current_music;
+
+    // Limit how often music can be triggered
+    // TBD
     return MusicStatus::INITIATE;
-}
-
-const uint8_t MusicRGBDevice::getRainbowHue() {
-    return rainbow_hue;
-}
-
-void MusicRGBDevice::setRainbowHueDebug(uint8_t hue) {
-    rainbow_hue = hue;
-}
-
-void MusicRGBDevice::loop() {
-    EVERY_N_MILLISECONDS(1000/hue_update_freq) {
-        rainbow_hue++;
-    }
 }

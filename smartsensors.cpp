@@ -2,7 +2,9 @@
 #include <WiFi.h>
 
 LinkedList<SmartSensorBase*> smartSensors([](const SmartSensorBase* dev) {
-    delete dev;
+    if (dev != NULL) {
+        delete dev;
+    }
 });
 
 SmartSensorBase::SmartSensorBase(const String _name) :

@@ -28,6 +28,7 @@
 #include "homekit.h"
 #include "analogRGB.h"
 #include "digitalRGB.h"
+#include "loopable.h"
 
 // FastLED
 #define DATA_PIN    33            // Control PIN
@@ -56,22 +57,19 @@ CRGB leds[NUM_LEDS];
 RGBDevice desk_led = RGBDevice("desk_led");
 MusicRGBDevice music_led = MusicRGBDevice("music_led", MUSIC_TRIG);
 
-AnalogRGB analog_rgb = AnalogRGB(&desk_led, &music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
-DigitalRGB *digital_rgb;
-
 HOMEKIT_RGBLED *desk_led_homekit;
 
 Weather outdoor_weather = Weather("openweathermap");
 OpenWeatherMap openweathermap = OpenWeatherMap(&outdoor_weather, secret_cityid, secret_openweathermap_token);
 
-WebServer server = WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
-
 void setup() {
   Serial.begin(115200);
 
-  // FastLED 
+  // Initialize Modules
+  new WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
   CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
-  digital_rgb = new DigitalRGB(&desk_led, &music_led, controller);
+  new DigitalRGB(&desk_led, &music_led, controller);
+  new AnalogRGB(&desk_led, &music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 
   // Wi-Fi
   WiFi.mode(WIFI_STA);
@@ -88,14 +86,10 @@ void setup() {
 }
 
 void loop() {
-  openweathermap.loop();
-  music_led.loop();
-  analog_rgb.loop();
-  digital_rgb->loop();
+  Loopable::loopall();
 
   // Normal Desk LED Status
   const FrontEnd update_frontend = desk_led.statusChanged(2);
-  const bool update = static_cast<bool>(update_frontend);
   homekit_loop(update_frontend);
 }
 
