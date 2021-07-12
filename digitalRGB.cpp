@@ -1,37 +1,53 @@
 #include <Arduino.h>
-#include "digitalRGB.h"
-
-#define HUE_WIDTH 9               // the width of the rainbow spread in # of LEDs
+#include "digitalRGB.h"            
 
 DigitalRGB::DigitalRGB(RGBDevice* _dev, MusicRGBDevice* _musicdev, CLEDController* const _controller) : 
             MusicDeviceDriver(_dev, _musicdev) {
 
     controller = _controller;
+
+    // Defaults
     rainbow_freq = 20;
-    rainbow_trigger_color = 0xffffff;  // How often do we check for change of color (Analog)
+    hue_width = 9;
+    rainbow_trigger_color = 0xffffff;
 }
 
+// Same code as AnalogRGB but shouldn't share the same function
 void DigitalRGB::loop() {
     MusicStatus music_status = musicdev->music_status;
     const uint8_t rainbow_hue = musicdev->getRainbowHue();
 
-    if (music_status == MusicStatus::HOLD) {
-        return;
-    }
+    switch (music_status) {
+        // Apply music color
+        case MusicStatus::INITIATE:
+            RGBLogic(true, rainbow_hue, true);
+            return;
 
-    // Apply non-music color without notifying
-    if (music_status == MusicStatus::RELEASE) {
-        RGBLogic(true, rainbow_hue, false);
-    }
+        // Apply non-music color without notifying
+        case MusicStatus::RELEASE:
+            RGBLogic(true, rainbow_hue, false);
+            return;
+    
+        case MusicStatus::HOLD:
+            return;
 
-    // Apply music color
-    if (music_status == MusicStatus::INITIATE) {
-        RGBLogic(true, rainbow_hue, true);
+        default:
+            // We don't care about update notification
+            const bool update = static_cast<bool>(dev->statusChanged(1));
+            RGBLogic(update, rainbow_hue, false);
     }
+}
 
-    // We don't care about update notification
-    const bool update = static_cast<bool>(dev->statusChanged(0));
-    RGBLogic(update, rainbow_hue, false);
+void DigitalRGB::setRainbowRefreshRate(const unsigned freq) {
+    rainbow_freq = freq;
+}
+
+void DigitalRGB::setRainbowColor(const uint32_t color) {
+    rainbow_trigger_color = color;
+}
+
+void DigitalRGB::setHueWidth(const uint8_t hw) {
+    hue_width = hw;
 }
 
 void DigitalRGB::RGBLogic(const bool update, const uint8_t rainbow_hue, const bool music) {
@@ -68,7 +84,7 @@ void DigitalRGB::RGBLogic(const bool update, const uint8_t rainbow_hue, const bo
 void DigitalRGB::setRainbow(const uint8_t rainbow_hue) {
     if (controller == NULL) return;
 
-    fill_rainbow(controller->leds(), controller->size(), rainbow_hue, HUE_WIDTH);
+    fill_rainbow(controller->leds(), controller->size(), rainbow_hue, hue_width);
     show();
 }
 

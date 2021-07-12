@@ -163,7 +163,7 @@ const String RGBDevice::colorAsHEXStr(const uint8_t color) const {
 }
 
 MusicRGBDevice::MusicRGBDevice(const String _name, const uint8_t trigger_pin) : pin{trigger_pin}, RGBDevice(_name) {
-    hue_update_freq = 10;
+    hue_update_freq = 10;   // How fast the rainbow goes in rainbow mode
     rainbow_hue = 0;
     last_music = false;
     music_status = MusicStatus::IGNORE;

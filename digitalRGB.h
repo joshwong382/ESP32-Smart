@@ -10,14 +10,17 @@
 class DigitalRGB : public MusicDeviceDriver {
     
     private:
-        uint32_t rainbow_trigger_color;
-        unsigned rainbow_freq;
+        uint32_t rainbow_trigger_color;     // On an RGB color, rainbow instead of displaying that color
+        unsigned rainbow_freq;              // Rainbow Update Refresh Rate
+        uint8_t hue_width;                  // the width of the rainbow spread in # of LEDs
         CLEDController* controller;
 
     public:
         DigitalRGB(RGBDevice* _dev, MusicRGBDevice* _musicdev, CLEDController* const led_controller);
         void loop();
-        //void setRainbowRefreshRate(const unsigned freq);
+        void setRainbowRefreshRate(const unsigned freq);
+        void setRainbowColor(const uint32_t color);
+        void setHueWidth(const uint8_t hw);
 
     private:
         void RGBLogic(const bool update, const uint8_t rainbow_hue, const bool music);

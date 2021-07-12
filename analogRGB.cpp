@@ -1,7 +1,5 @@
 #include <Arduino.h>
 #include "analogRGB.h"
-#define ANALOG_FREQ 75            // Refresh Rate of PWM (Calculates Duty Cycles)
-#define ANALOG_RESOLUTION 8       // # of bits color eg. 8 bits per color (R,G,B) yields -> 16 Million Colors
 
 AnalogRGB::AnalogRGB(RGBDevice* _dev, MusicRGBDevice* _musicdev, const uint8_t r_pin, const uint8_t g_pin, const uint8_t b_pin, const uint8_t r_c, const uint8_t g_c, const uint8_t b_c) :
             r_ledc{r_c}, 
@@ -17,31 +15,43 @@ AnalogRGB::AnalogRGB(RGBDevice* _dev, MusicRGBDevice* _musicdev, const uint8_t r
     ledcSetup(b_ledc, ANALOG_FREQ, ANALOG_RESOLUTION);
     ledcAttachPin(b_pin, b_ledc);
 
+    // Defaults
     rainbow_freq = 20;
     rainbow_trigger_color = 0xffffff;
 }
 
+// Same code as DigitalRGB but shouldn't share the same function
 void AnalogRGB::loop() {
     MusicStatus music_status = musicdev->music_status;
     const uint8_t rainbow_hue = musicdev->getRainbowHue();
 
-    if (music_status == MusicStatus::HOLD) {
-        return;
-    }
+    switch (music_status) {
+        // Apply music color
+        case MusicStatus::INITIATE:
+            RGBLogic(true, rainbow_hue, true);
+            return;
 
-    // Apply non-music color without notifying
-    if (music_status == MusicStatus::RELEASE) {
-        RGBLogic(true, rainbow_hue, false);
-    }
+        // Apply non-music color without notifying
+        case MusicStatus::RELEASE:
+            RGBLogic(true, rainbow_hue, false);
+            return;
+    
+        case MusicStatus::HOLD:
+            return;
 
-    // Apply music color
-    if (music_status == MusicStatus::INITIATE) {
-        RGBLogic(true, rainbow_hue, true);
+        default:
+            // We don't care about update notification
+            const bool update = static_cast<bool>(dev->statusChanged(0));
+            RGBLogic(update, rainbow_hue, false);
     }
+}
 
-    // We don't care about update notification
-    const bool update = static_cast<bool>(dev->statusChanged(0));
-    RGBLogic(update, rainbow_hue, false);
+void AnalogRGB::setRainbowRefreshRate(const unsigned freq) {
+    rainbow_freq = freq;
+}
+
+void AnalogRGB::setRainbowColor(const uint32_t color) {
+    rainbow_trigger_color = color;
 }
 
 void AnalogRGB::RGBLogic(const bool update, const uint8_t rainbow_hue, const bool music) {

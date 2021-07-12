@@ -44,9 +44,6 @@
 #define BLUEPIN 14
 #define BLUECHANNEL 3
 
-// Updates
-#define HUE_UPDATE_HZ 10          // How fast the rainbow goes in rainbow mode
-
 // Music LED
 #define MUSIC_TRIG 32             // Pull to ground to trigger a music specific color
 
@@ -66,7 +63,7 @@ void setup() {
   Serial.begin(115200);
 
   // Initialize Modules
-  new WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
+  WebServer* server = new WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
   CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
   new DigitalRGB(&desk_led, &music_led, controller);
   new AnalogRGB(&desk_led, &music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
@@ -82,7 +79,7 @@ void setup() {
   smartDevices.add(&desk_led);
   smartDevices.add(&music_led);
   smartSensors.add(&outdoor_weather);
-  server.begin();
+  server->begin();
 }
 
 void loop() {
