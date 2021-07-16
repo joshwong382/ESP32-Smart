@@ -48,7 +48,6 @@ CRGB leds[NUM_LEDS];
 
 void setup() {
   Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
 
   // Initialize Devices
   RGBDevice* desk_led = new RGBDevice("desk_led");
@@ -59,7 +58,10 @@ void setup() {
   new DigitalRGB(desk_led, music_led, controller);
   new AnalogRGB(desk_led, music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
 
-  // Link HomeKit to Devices/Sensors
+  // WiFi, Link HomeKit to Devices/Sensors
+  // Required to link at least 1 HomeKit Device for HomeSpan's internal WiFi logic
+  // see https://github.com/HomeSpan/HomeSpan/blob/master/docs/CLI.md
+  WiFi.mode(WIFI_STA);
   new HomeSpanAccessory(desk_led);
   new HomeSpanAccessory(music_led);
 

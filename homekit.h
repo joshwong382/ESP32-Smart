@@ -23,8 +23,8 @@ class HomeSpanInit : public Loopable {
 class HomeSpanAccessory : public SpanAccessory {
 
   public:
-    HomeSpanAccessory(SmartDevice *dev);
-    HomeSpanAccessory(SmartSensorBase *dev);
+    HomeSpanAccessory(SmartDevice* dev);
+    HomeSpanAccessory(SmartSensorBase* dev);
     void init(const String name);
 
 };
@@ -32,7 +32,7 @@ class HomeSpanAccessory : public SpanAccessory {
 class HomeKit_RGB : public Loopable, Service::LightBulb {
 
   public:
-    HomeKit_RGB(RGBDevice *_internaldev);
+    HomeKit_RGB(RGBDevice* const _internaldev);
     void loop();
 
   private:
@@ -41,7 +41,7 @@ class HomeKit_RGB : public Loopable, Service::LightBulb {
     SpanCharacteristic *H;
     SpanCharacteristic *S;
     SpanCharacteristic *V;
-    RGBDevice *internalrgbdevice;
+    RGBDevice* const internalrgbdevice;
 
     void internal_update();   // Updated via other FrontEnds
 

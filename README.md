@@ -2,7 +2,7 @@
 This ESP32 Arduino program allows multi-platform control of different types of IoT sensors/devices.
 
 ## Setup
-Connect to WiFi using HomeSpan. More details: [Click Here](https://github.com/HomeSpan/HomeSpan).
+Connect to WiFi using the HomeSpan CLI. More details: [Click Here](https://github.com/HomeSpan/HomeSpan/blob/master/docs/CLI.md).
 
 ## Features
 Control Protocols:
@@ -13,6 +13,9 @@ Types of Devices:
 - On/Off Switch
 - Brightness Light
 - RGB Light
+
+Types of Sensors:
+- Temp & Humidity
 
 Light Drivers:
 - [FastLED](http://fastled.io/) (Individually Addressable)

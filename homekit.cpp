@@ -14,8 +14,11 @@ void HomeSpanInit::loop() {
     homeSpan.poll();
 }
 
-HomeSpanAccessory::HomeSpanAccessory(SmartDevice *dev) : SpanAccessory() {
-    if (dev == NULL) return;
+HomeSpanAccessory::HomeSpanAccessory(SmartDevice* dev) : SpanAccessory() {
+    if (dev == NULL) {
+        Serial.println("HomeKit initialized with nullptr");
+        return;
+    }
 
     init(dev->getName());
     
@@ -28,7 +31,7 @@ HomeSpanAccessory::HomeSpanAccessory(SmartDevice *dev) : SpanAccessory() {
     }
 }
 
-HomeSpanAccessory::HomeSpanAccessory(SmartSensorBase *dev) : SpanAccessory() {
+HomeSpanAccessory::HomeSpanAccessory(SmartSensorBase* dev) : SpanAccessory() {
     // TBA
 }
 
@@ -51,10 +54,12 @@ void HomeSpanAccessory::init(const String name) {
     new Characteristic::Version("1.2.0");
 }
 
-HomeKit_RGB::HomeKit_RGB(RGBDevice *_internaldev) : Service::LightBulb() {
-    if (_internaldev == NULL) return;
+HomeKit_RGB::HomeKit_RGB(RGBDevice* const _internaldev) : Service::LightBulb(), internalrgbdevice{_internaldev} {
+    if (_internaldev == NULL) {
+        Serial.println("HomeKit initialized with nullptr");
+        return;
+    }
 
-    internalrgbdevice = _internaldev;
     power = new Characteristic::On();
     H = new Characteristic::Hue();
     S = new Characteristic::Saturation();
@@ -74,10 +79,7 @@ void HomeKit_RGB::loop() {
 }
 
 void HomeKit_RGB::internal_update() {
-    if (internalrgbdevice == NULL) {
-        Serial.println("HomeKit initialized with nullptr");
-        return;
-    }
+    if (internalrgbdevice == NULL) return;
 
     CHSV fastled_hsv = internalrgbdevice->getHSV();
 
@@ -119,4 +121,5 @@ boolean HomeKit_RGB::update() {
     const uint8_t uint_s = uint8_t(new_s * 255 / 100);
     const uint8_t uint_v = uint8_t(new_v * 255 / 100);
     internalrgbdevice->setHSV(CHSV(uint_h, uint_s, uint_v), HOMEKIT_FRONTEND);
+    return true;
 }
