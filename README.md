@@ -23,15 +23,12 @@ Special Features:
 - RGB Rainbow mode
 
 ## Newest Changes
-- Rewrite Analog RGB to OOP
-- Rewrite WebServer to a class
-- Added OpenWeatherMap for outdoor weather
+- Refactor HomeKit
+- Refactor Analog and DigitalRGB
+- Add Loopable Class
 
 ## Future Changes
-- Rewrite Digital RGB to OOP
-- Rewrite HomeKit to OOP
 - Rewrite FrontEnd base class
-- Rewrite Backends to classes
 - Change how device capabilities are defined
 - Use GET variables exclusively for HTTP_API
 - Add Alexa control

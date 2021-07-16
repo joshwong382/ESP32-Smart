@@ -1,12 +1,12 @@
 #include "smartdevices.h"
 
-LinkedList<SmartDevice*> smartDevices([](const SmartDevice* dev) {
+LinkedList<SmartDevice*> SmartDevice::alldevices = LinkedList<SmartDevice*>([](const SmartDevice* dev) {
     if (dev != NULL) {
         delete dev;
     }
 });
 
-SmartDevice::SmartDevice(const String _name, const Backend _type) : type {_type} {
+SmartDevice::SmartDevice(const String _name, const DeviceType _type) : type {_type} {
     constructor(_name);
 }
 
@@ -19,11 +19,11 @@ void SmartDevice::updateStatusChanged(const FrontEnd deviceid) {
 void SmartDevice::constructor(const String& _name) {
     name = _name;
     power = PWR_OFF;
-
+    alldevices.add(this);
     updateStatusChanged(FrontEnd::UpdateAll);
 }
 
-SmartDevice::SmartDevice(const String _name) : type {Backend::SmartDevice} {
+SmartDevice::SmartDevice(const String _name) : type {DeviceType::SmartDevice} {
     constructor(_name);
 }
 
@@ -60,10 +60,10 @@ const FrontEnd SmartDevice::statusChanged(const unsigned driver_id) {
 
 // BrightnessDevice
 
-BrightnessDevice::BrightnessDevice(const String _name, const Backend _type) : SmartDevice(_name, _type) {}
+BrightnessDevice::BrightnessDevice(const String _name, const DeviceType _type) : SmartDevice(_name, _type) {}
 BrightnessDevice::BrightnessDevice(const String _name) :
             SmartDevice(_name,
-            Backend::BrightnessDevice) {
+            DeviceType::BrightnessDevice) {
     brightness = 100;
 }
 
@@ -90,7 +90,7 @@ void BrightnessDevice::setBrightnessPercent(const uint8_t _brightness, const Fro
 
 // RGBDevice
 
-RGBDevice::RGBDevice(const String _name) : BrightnessDevice(_name, Backend::RGBDevice) {
+RGBDevice::RGBDevice(const String _name) : BrightnessDevice(_name, DeviceType::RGBDevice) {
     r = 255;
     b = 255;
     g = 255;

@@ -11,9 +11,7 @@ class SmartDevice;
 class BrightnessDevice;
 class RGBDevice;
 
-extern LinkedList<SmartDevice*> smartDevices;
-
-enum class Backend {
+enum class DeviceType {
     SmartDevice,        // aka switch
     BrightnessDevice,   // switch + brightness
     RGBDevice           // switch + brightness + RGB
@@ -28,12 +26,17 @@ enum class MusicStatus {
 
 class SmartDevice {
 
+    // All devices list
+    public:
+        static LinkedList<SmartDevice*> alldevices;
+
+
     protected:
         String name;
         bool power;
         FrontEnd status_changed_var[MAX_DRIVERS];
 
-        SmartDevice(const String _name, const Backend _type);
+        SmartDevice(const String _name, const DeviceType _type);
         SmartDevice();
         void updateStatusChanged(const FrontEnd deviceid);
 
@@ -41,7 +44,7 @@ class SmartDevice {
         void constructor(const String& _name);
 
     public:
-        const Backend type;
+        const DeviceType type;
 
         SmartDevice(const String _name);
         const bool getPower() const;
@@ -56,7 +59,7 @@ class SmartDevice {
 class BrightnessDevice : public SmartDevice {
 
     protected:
-        BrightnessDevice(const String _name, const Backend _type);
+        BrightnessDevice(const String _name, const DeviceType _type);
     
     public:
         BrightnessDevice(const String _name);

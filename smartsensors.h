@@ -9,14 +9,16 @@
 class SmartSensorBase;
 class Weather;
 
-extern LinkedList<SmartSensorBase*> smartSensors;
-
 enum class SensorTypes {
     SmartSensorBase,
     Weather
 };
 
 class SmartSensorBase {
+
+    // All sensors list
+    public:
+        static LinkedList<SmartSensorBase*> allsensors;
 
     public:
         const SensorTypes type;

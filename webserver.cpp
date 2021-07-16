@@ -28,7 +28,7 @@ WebServer::~WebServer() {
 
 void WebServer::begin() {
 
-    for (auto it = smartDevices.begin(); it != smartDevices.end(); ++it) {
+    for (auto it = SmartDevice::alldevices.begin(); it != SmartDevice::alldevices.end(); ++it) {
         createDeviceSpecificWebpages(*it);
     }
     webserver->begin();
@@ -61,14 +61,14 @@ AsyncWebHandler& WebServer::setPromPage() {
         String html = "# Prometheus Metrics";
 
         // Smart Devices
-        for (auto it = smartDevices.begin(); it != smartDevices.end(); ++it) {
+        for (auto it = SmartDevice::alldevices.begin(); it != SmartDevice::alldevices.end(); ++it) {
             const String name = (*it)->getName();
             const String brightness = String((*it)->getBrightnessPercent());
             html += "\n" + name + " " + brightness;
         }
 
         // Smart Sensors
-        for (auto it = smartSensors.begin(); it != smartSensors.end(); ++it) {
+        for (auto it = SmartSensorBase::allsensors.begin(); it != SmartSensorBase::allsensors.end(); ++it) {
             switch ((*it)->type) {
                 case SensorTypes::Weather: {
                     Weather *weather_dev = (Weather*) *it;
@@ -96,13 +96,13 @@ AsyncWebHandler& WebServer::setRootPage() {
         response_html += "<body><table style='font-size: 18px;'>";
 
         // Loop through all Smart Devices
-        for (auto devices_it = smartDevices.begin(); devices_it != smartDevices.end(); ++devices_it) {
+        for (auto devices_it = SmartDevice::alldevices.begin(); devices_it != SmartDevice::alldevices.end(); ++devices_it) {
             const String name = (*devices_it)->getName();
             const bool pwr = (*devices_it)->getPower();
 
             // check brightness (really need to clean this up)
             String on_str;
-            if ((*devices_it)->type == Backend::SmartDevice) {
+            if ((*devices_it)->type == DeviceType::SmartDevice) {
                 on_str = "ON";
             } else {
                 on_str = String((*devices_it)->getBrightnessPercent()) + "%";
@@ -140,24 +140,24 @@ void WebServer::sendResponse(AsyncWebServerRequest* request, const String conten
 
 void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
 
-    // for all backend device, run a specific code
+    // for all DeviceType device, run a specific code
     const String base_url = "/" + device->getName() + "/";
 
     setWebPageRaw(base_url + "on", HTTP_GET, [device](AsyncWebServerRequest *request) {
         switch (device->type) {
 
-            case Backend::RGBDevice: {
+            case DeviceType::RGBDevice: {
                 RGBDevice *rgb_dev = (RGBDevice*) device;
                 if (request->hasParam("color")) {
                     String color = request->getParam("color")->value();
                     char color_arr[7];
                     color.toCharArray(color_arr, 7);
                     uint32_t rgb = strtol(color_arr, NULL, 16);
-                    rgb_dev->setRGB(rgb, api);
+                    rgb_dev->setRGB(rgb, FrontEnd::HTTP_API);
                 }
             }
 
-            case Backend::BrightnessDevice: {
+            case DeviceType::BrightnessDevice: {
                 BrightnessDevice *brightness_dev = (BrightnessDevice*) device;
                 int brightness = -1;
                 if (request->hasParam("brightness")) {
@@ -169,7 +169,7 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
             }
 
             default:
-                device->setPower(PWR_ON, api);
+                device->setPower(PWR_ON, FrontEnd::HTTP_API);
         }
 
         AsyncWebServerResponse *response = request->beginResponse(302);
@@ -178,25 +178,25 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
     });
 
     switch (device->type) {
-        case Backend::RGBDevice:
+        case DeviceType::RGBDevice:
             setWebPage(base_url + "color", "text/plain", [device]() -> String {
                 RGBDevice *rgb_dev = (RGBDevice*) device;
                 return rgb_dev->getRGBStr();
             });
 
-        case Backend::BrightnessDevice:
+        case DeviceType::BrightnessDevice:
             setWebPage(base_url + "brightness", "text/plain", [device]() -> String {
                 BrightnessDevice *brightness_dev = (BrightnessDevice*) device;
                 return String(brightness_dev->getBrightnessPercent());
             });
 
-        case Backend::SmartDevice:
+        case DeviceType::SmartDevice:
             setWebPage(base_url + "status", "text/plain", [device]() -> String {
                 return String(device->getPower());
             });
 
             setWebPageRaw(base_url + "off", HTTP_GET, [device](AsyncWebServerRequest *request) {
-                device->setPower(PWR_OFF, api);
+                device->setPower(PWR_OFF, FrontEnd::HTTP_API);
                 request->redirect("/");
             });
 

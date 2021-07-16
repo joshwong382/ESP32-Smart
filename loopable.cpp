@@ -4,6 +4,12 @@ Loopable::Loopable() {
     loopables.add(this);
 }
 
+Loopable::Loopable(const bool enable) {
+    if (enable) {
+      loopables.add(this);
+    }
+}
+
 void Loopable::loopall() {
     for (auto it = loopables.begin(); it != loopables.end(); ++it) {
         if ((*it) != NULL) {

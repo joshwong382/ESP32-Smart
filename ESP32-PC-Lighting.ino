@@ -1,5 +1,3 @@
-#define debug 0
-
 // FastLED Core Distribution
 //#define FASTLED_ALLOW_INTERRUPTS 0
 //#define CONFIG_ASYNC_TCP_RUNNING_CORE 1
@@ -16,7 +14,6 @@
 //#define FASTLED_ALL_PINS_HARDWARE_SPI 1
 //#define FASTLED_ESP32_SPI_BUS HSPI 1
 
-//#include "tlc57911.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
@@ -47,55 +44,34 @@
 // Music LED
 #define MUSIC_TRIG 32             // Pull to ground to trigger a music specific color
 
-void homekit_loop(const FrontEnd update);
-
 CRGB leds[NUM_LEDS];
-
-RGBDevice desk_led = RGBDevice("desk_led");
-MusicRGBDevice music_led = MusicRGBDevice("music_led", MUSIC_TRIG);
-
-HOMEKIT_RGBLED *desk_led_homekit;
-
-Weather outdoor_weather = Weather("openweathermap");
-OpenWeatherMap openweathermap = OpenWeatherMap(&outdoor_weather, secret_cityid, secret_openweathermap_token);
 
 void setup() {
   Serial.begin(115200);
-
-  // Initialize Modules
-  WebServer* server = new WebServer(9999, "joshua@josh-wong.net", "ESP32", "JOSH-207");
-  CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
-  new DigitalRGB(&desk_led, &music_led, controller);
-  new AnalogRGB(&desk_led, &music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
-
-  // Wi-Fi
   WiFi.mode(WIFI_STA);
 
-  // Homespan
-  new HOMEKIT_ACCESSORY("desk_led");
-  desk_led_homekit = new HOMEKIT_RGBLED(&desk_led);
+  // Initialize Devices
+  RGBDevice* desk_led = new RGBDevice("desk_led");
+  MusicRGBDevice* music_led = new MusicRGBDevice("music_led", MUSIC_TRIG);
+
+  // Initialize Drivers
+  CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
+  new DigitalRGB(desk_led, music_led, controller);
+  new AnalogRGB(desk_led, music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+
+  // Link HomeKit to Devices/Sensors
+  new HomeSpanAccessory(desk_led);
+  new HomeSpanAccessory(music_led);
+
+  // Initialize Sensors
+  Weather* outdoor_weather = new Weather("openweathermap");
+  new OpenWeatherMap(outdoor_weather, secret_cityid, secret_openweathermap_token);
   
   // Web Server
-  smartDevices.add(&desk_led);
-  smartDevices.add(&music_led);
-  smartSensors.add(&outdoor_weather);
+  WebServer* server = new WebServer(9999, "joshua@josh-wong.net", "ESP32-PC-Lighting", "JOSH-207");
   server->begin();
 }
 
 void loop() {
   Loopable::loopall();
-
-  // Normal Desk LED Status
-  const FrontEnd update_frontend = desk_led.statusChanged(2);
-  homekit_loop(update_frontend);
-}
-
-void homekit_loop(const FrontEnd update) {
-  HOMEKIT_ACCESSORY::loop();
-
-  if (update == FrontEnd::None) return;
-  if (update != FrontEnd::HomeKit) return;
-  if (desk_led_homekit == NULL) return;
-
-  desk_led_homekit->internal_update();
 }
