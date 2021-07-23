@@ -1,11 +1,6 @@
 #include "smartsensors.h"
+#include "SmartManager.h"
 #include <WiFi.h>
-
-LinkedList<SmartSensorBase*> SmartSensorBase::allsensors = LinkedList<SmartSensorBase*>([](const SmartSensorBase* dev) {
-    if (dev != NULL) {
-        delete dev;
-    }
-});
 
 SmartSensorBase::SmartSensorBase(const String _name) :
             name {_name},
@@ -20,7 +15,7 @@ SmartSensorBase::SmartSensorBase(const String _name, const SensorTypes _type) :
 }
 
 void SmartSensorBase::constructor() {
-    allsensors.add(this);
+    SmartManager::addSensor(this);
     last_update = 0;
     expiry_s = 300;
     failure_count = 0;

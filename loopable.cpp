@@ -1,25 +1,12 @@
 #include "loopable.h"
+#include "SmartManager.h"
 
 Loopable::Loopable() {
-    loopables.add(this);
+    SmartManager::addLoopable(this);
 }
 
 Loopable::Loopable(const bool enable) {
     if (enable) {
-      loopables.add(this);
+      SmartManager::addLoopable(this);
     }
 }
-
-void Loopable::loopall() {
-    for (auto it = loopables.begin(); it != loopables.end(); ++it) {
-        if ((*it) != NULL) {
-            (*it)->loop();
-        }
-    }
-}
-
-LinkedList<Loopable*> Loopable::loopables = LinkedList<Loopable*>([](const Loopable* ptr) {
-    if (ptr != NULL) {
-        delete ptr;
-    }
-});

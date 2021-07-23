@@ -26,11 +26,6 @@ enum class MusicStatus {
 
 class SmartDevice {
 
-    // All devices list
-    public:
-        static LinkedList<SmartDevice*> alldevices;
-
-
     protected:
         String name;
         bool power;

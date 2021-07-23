@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "SmartManager.h"
 
 WebServer::WebServer(unsigned port, const String _manufacturer, const String _model, const String _serial) :
             manufacturer {_manufacturer},
@@ -28,7 +29,7 @@ WebServer::~WebServer() {
 
 void WebServer::begin() {
 
-    for (auto it = SmartDevice::alldevices.begin(); it != SmartDevice::alldevices.end(); ++it) {
+    for (auto it = SmartManager::devices.begin(); it != SmartManager::devices.end(); ++it) {
         createDeviceSpecificWebpages(*it);
     }
     webserver->begin();
@@ -61,14 +62,14 @@ AsyncWebHandler& WebServer::setPromPage() {
         String html = "# Prometheus Metrics";
 
         // Smart Devices
-        for (auto it = SmartDevice::alldevices.begin(); it != SmartDevice::alldevices.end(); ++it) {
+        for (auto it = SmartManager::devices.begin(); it != SmartManager::devices.end(); ++it) {
             const String name = (*it)->getName();
             const String brightness = String((*it)->getBrightnessPercent());
             html += "\n" + name + " " + brightness;
         }
 
         // Smart Sensors
-        for (auto it = SmartSensorBase::allsensors.begin(); it != SmartSensorBase::allsensors.end(); ++it) {
+        for (auto it = SmartManager::sensors.begin(); it != SmartManager::sensors.end(); ++it) {
             switch ((*it)->type) {
                 case SensorTypes::Weather: {
                     Weather *weather_dev = (Weather*) *it;
@@ -96,7 +97,7 @@ AsyncWebHandler& WebServer::setRootPage() {
         response_html += "<body><table style='font-size: 18px;'>";
 
         // Loop through all Smart Devices
-        for (auto devices_it = SmartDevice::alldevices.begin(); devices_it != SmartDevice::alldevices.end(); ++devices_it) {
+        for (auto devices_it = SmartManager::devices.begin(); devices_it != SmartManager::devices.end(); ++devices_it) {
             const String name = (*devices_it)->getName();
             const bool pwr = (*devices_it)->getPower();
 

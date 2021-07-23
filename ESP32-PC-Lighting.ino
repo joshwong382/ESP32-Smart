@@ -18,14 +18,12 @@
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 #include "secretdata.h"
-#include "smartdevices.h"
-#include "smartsensors.h"
 #include "OpenWeatherMap.h"
 #include "webserver.h"
 #include "homekit.h"
 #include "analogRGB.h"
 #include "digitalRGB.h"
-#include "loopable.h"
+#include "SmartManager.h"
 
 // FastLED
 #define DATA_PIN    33            // Control PIN
@@ -75,5 +73,5 @@ void setup() {
 }
 
 void loop() {
-  Loopable::loopall();
+  SmartManager::loopall();
 }

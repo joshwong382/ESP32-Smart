@@ -16,10 +16,6 @@ enum class SensorTypes {
 
 class SmartSensorBase {
 
-    // All sensors list
-    public:
-        static LinkedList<SmartSensorBase*> allsensors;
-
     public:
         const SensorTypes type;
         

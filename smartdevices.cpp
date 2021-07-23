@@ -1,10 +1,5 @@
 #include "smartdevices.h"
-
-LinkedList<SmartDevice*> SmartDevice::alldevices = LinkedList<SmartDevice*>([](const SmartDevice* dev) {
-    if (dev != NULL) {
-        delete dev;
-    }
-});
+#include "SmartManager.h"
 
 SmartDevice::SmartDevice(const String _name, const DeviceType _type) : type {_type} {
     constructor(_name);
@@ -19,7 +14,7 @@ void SmartDevice::updateStatusChanged(const FrontEnd deviceid) {
 void SmartDevice::constructor(const String& _name) {
     name = _name;
     power = PWR_OFF;
-    alldevices.add(this);
+    SmartManager::addDevice(this);
     updateStatusChanged(FrontEnd::UpdateAll);
 }
 
