@@ -44,17 +44,27 @@
 
 CRGB leds[NUM_LEDS];
 
+SmartManager* manager;
+
 void setup() {
   Serial.begin(115200);
+
+  manager = new SmartManager();
 
   // Initialize Devices
   RGBDevice* desk_led = new RGBDevice("desk_led");
   MusicRGBDevice* music_led = new MusicRGBDevice("music_led", MUSIC_TRIG);
 
+  manager->addDevice(desk_led);
+  manager->addDevice(music_led);
+
   // Initialize Drivers
   CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
-  new DigitalRGB(desk_led, music_led, controller);
-  new AnalogRGB(desk_led, music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+  DigitalRGB* digital_rgb = new DigitalRGB(desk_led, music_led, controller);
+  AnalogRGB* analog_rgb = new AnalogRGB(desk_led, music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+
+  manager->addLoopable(digital_rgb);
+  manager->addLoopable(analog_rgb;
 
   // WiFi, Link HomeKit to Devices/Sensors
   // Required to link at least 1 HomeKit Device for HomeSpan's internal WiFi logic
@@ -65,13 +75,16 @@ void setup() {
 
   // Initialize Sensors
   Weather* outdoor_weather = new Weather("openweathermap");
-  new OpenWeatherMap(outdoor_weather, secret_cityid, secret_openweathermap_token);
+  OpenWeatherMap* open_weather_map = new OpenWeatherMap(outdoor_weather, secret_cityid, secret_openweathermap_token);
+
+  manager->addSensor(outdoor_weather);
+  manager->addLoopable(open_weather_map);
   
   // Web Server
-  WebServer* server = new WebServer(9999, "joshua@josh-wong.net", "ESP32-PC-Lighting", "JOSH-207");
+  WebServer* server = new WebServer(manager, 9999, "joshua@josh-wong.net", "ESP32-PC-Lighting", "JOSH-207");
   server->begin();
 }
 
 void loop() {
-  SmartManager::loopall();
+  manager->loopall();
 }

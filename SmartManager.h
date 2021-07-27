@@ -1,26 +1,24 @@
 #pragma once
-#include "loopable.h"
-#include "smartdevices.h"
-#include "smartsensors.h"
 
+#include "loopable.h"
+#include <ESPAsyncWebServer.h>    // ESPAsyncWebServer implementation of LinkedList
+
+/**
+ * Manages ticks/updates for various devices and sensors
+ */
 class SmartManager {
     public:
-        static void loopall();
+        SmartManager();
+        ~SmartManager();
 
+        void loopall();
+
+        void addLoopable(Loopable* loopable);
+        void addDevice(SmartDevice* dev);
+        void addSensor(SmartSensorBase* dev);
+    
     private:
-        // Contributers
-        friend class Loopable;
-        friend class SmartDevice;
-        friend class SmartSensorBase;
-
-        // Consumers
-        friend class WebServer;
-
-        static LinkedList<Loopable*> loopables;
-        static LinkedList<SmartDevice*> devices;
-        static LinkedList<SmartSensorBase*> sensors;
-
-        static void addLoopable(Loopable* loopable);
-        static void addDevice(SmartDevice* dev);
-        static void addSensor(SmartSensorBase* dev);
+        LinkedList<Loopable*> loopables;
+        LinkedList<SmartDevice*> devices;
+        LinkedList<SmartSensorBase*> sensors;
 };

@@ -72,6 +72,7 @@ class RGBDevice : public BrightnessDevice {
     // Variable brightness not used
     public:
         RGBDevice(const String _name);
+        virtual ~RGBDevice() {}
 
         const uint32_t getRGB() const;
         const String getRGBStr() const;
@@ -94,9 +95,10 @@ class MusicRGBDevice : public RGBDevice, Loopable {
 
     public:
         MusicRGBDevice(const String _name, const uint8_t trigger_pin);
+        virtual ~MusicDeviceDriver() {}
         const uint8_t getRainbowHue();
         void setRainbowHueDebug(uint8_t hue);
-        void loop();
+        virtual void loop();
         MusicStatus music_status;
 
     private:

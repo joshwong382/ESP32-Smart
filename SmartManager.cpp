@@ -1,39 +1,41 @@
 #include "SmartManager.h"
 
+SmartManager::SmartManager() :
+    loopables{LinkedList<Loopable*>([](const Loopable* ptr) {
+        if (ptr != NULL) {
+            delete ptr;
+        }
+    })},
+    devices{LinkedList<SmartDevice*>([](const SmartDevice* dev) {
+        if (dev != NULL) {
+            delete dev;
+        }
+    })},
+    sensors{LinkedList<SmartSensorBase*>([](const SmartSensorBase* dev) {
+        if (dev != NULL) {
+            delete dev;
+        }
+    })}
+{}
+
+SmartManager::~SmartManager() {}
+
 void SmartManager::loopall() {
-    for (auto it = loopables.begin(); it != loopables.end(); ++it) {
+    for (auto it = this->loopables.begin(); it != this->loopables.end(); ++it) {
         if ((*it) != NULL) {
             (*it)->loop();
         }
     }
 }
 
-LinkedList<Loopable*> SmartManager::loopables = LinkedList<Loopable*>([](const Loopable* ptr) {
-    if (ptr != NULL) {
-        delete ptr;
-    }
-});
-
-LinkedList<SmartDevice*> SmartManager::devices = LinkedList<SmartDevice*>([](const SmartDevice* dev) {
-    if (dev != NULL) {
-        delete dev;
-    }
-});
-
-LinkedList<SmartSensorBase*> SmartManager::sensors = LinkedList<SmartSensorBase*>([](const SmartSensorBase* dev) {
-    if (dev != NULL) {
-        delete dev;
-    }
-});
-
 void SmartManager::addLoopable(Loopable* loopable) {
-    loopables.add(loopable);
+    this->loopables.add(loopable);
 }
 
 void SmartManager::addDevice(SmartDevice* dev) {
-    devices.add(dev);
+    this->devices.add(dev);
 }
 
 void SmartManager::addSensor(SmartSensorBase* dev) {
-    sensors.add(dev);
+    this->sensors.add(dev);
 }

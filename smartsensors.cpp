@@ -15,7 +15,6 @@ SmartSensorBase::SmartSensorBase(const String _name, const SensorTypes _type) :
 }
 
 void SmartSensorBase::constructor() {
-    SmartManager::addSensor(this);
     last_update = 0;
     expiry_s = 300;
     failure_count = 0;

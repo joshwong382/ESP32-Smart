@@ -11,6 +11,7 @@
 class WebServer {
 
   private:
+    SmartManager* manager = NULL;
     AsyncWebServer* webserver = NULL;
     AsyncWebHandler* metrics_handler = NULL;
     String font_url;
@@ -21,7 +22,7 @@ class WebServer {
     const String manufacturer;
 
   public:
-    WebServer(unsigned port, const String _manufacturer, const String _model, const String _serial);
+    WebServer(SmartManager* manager, unsigned port, const String _manufacturer, const String _model, const String _serial);
     ~WebServer();
     void begin();
     void setFontURL(const String url);                                  // This is not input checked!
