@@ -51,10 +51,14 @@ void setup() {
   RGBDevice* desk_led = new RGBDevice("desk_led");
   MusicRGBDevice* music_led = new MusicRGBDevice("music_led", MUSIC_TRIG);
 
+  // Initialize Sensors
+  Weather* outdoor_weather = new Weather("openweathermap");
+
   // Initialize Drivers
   CLEDController* controller = &(FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip));
   new DigitalRGB(desk_led, music_led, controller);
   new AnalogRGB(desk_led, music_led, REDPIN, GREENPIN, BLUEPIN, REDCHANNEL, GREENCHANNEL, BLUECHANNEL);
+  new OpenWeatherMap(outdoor_weather, secret_cityid, secret_openweathermap_token);
 
   // WiFi, Link HomeKit to Devices/Sensors
   // Required to link at least 1 HomeKit Device for HomeSpan's internal WiFi logic
@@ -62,10 +66,6 @@ void setup() {
   WiFi.mode(WIFI_STA);
   new HomeSpanAccessory(desk_led);
   new HomeSpanAccessory(music_led);
-
-  // Initialize Sensors
-  Weather* outdoor_weather = new Weather("openweathermap");
-  new OpenWeatherMap(outdoor_weather, secret_cityid, secret_openweathermap_token);
   
   // Web Server
   WebServer* server = new WebServer(9999, "joshua@josh-wong.net", "ESP32-PC-Lighting", "JOSH-207");

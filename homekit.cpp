@@ -73,7 +73,7 @@ void HomeKit_RGB::loop() {
 
     const FrontEnd update_frontend = internalrgbdevice->statusChanged(2);
     if (update_frontend == FrontEnd::None) return;
-    if (update_frontend != HOMEKIT_FRONTEND) return;
+    if (update_frontend == HOMEKIT_FRONTEND) return;
 
     internal_update();
 }
