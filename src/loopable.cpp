@@ -1,12 +1,12 @@
 #include "loopable.h"
-#include "SmartManager.h"
+#include "StateManager.h"
 
 Loopable::Loopable() {
-    SmartManager::addLoopable(this);
+    StateManager::addLoopable(this);
 }
 
 Loopable::Loopable(const bool enable) {
     if (enable) {
-      SmartManager::addLoopable(this);
+      StateManager::addLoopable(this);
     }
 }

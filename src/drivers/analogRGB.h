@@ -1,7 +1,7 @@
 #pragma once
-#include "smartdevices.h"
-#include "smartsensors.h"
-#include "driver.h"
+#include "../state/smartdevices.h"
+#include "../state/smartsensors.h"
+#include "../driver.h"
 
 #define ANALOG_FREQ 75            // Refresh Rate of PWM (Calculates Duty Cycles)
 #define ANALOG_RESOLUTION 8       // # of bits color eg. 8 bits per color (R,G,B) yields -> 16 Million Colors

@@ -1,11 +1,11 @@
 #include "smartdevices.h"
-#include "SmartManager.h"
+#include "../StateManager.h"
 
 SmartDevice::SmartDevice(const String _name, const DeviceType _type) : type {_type} {
     constructor(_name);
 }
 
-void SmartDevice::updateStatusChanged(const FrontEnd deviceid) {
+void SmartDevice::updateStatusChanged(const Controller deviceid) {
     for (int i=0; i<MAX_DRIVERS; i++) {
         status_changed_var[i] = deviceid;
     }
@@ -14,8 +14,8 @@ void SmartDevice::updateStatusChanged(const FrontEnd deviceid) {
 void SmartDevice::constructor(const String& _name) {
     name = _name;
     power = PWR_OFF;
-    SmartManager::addDevice(this);
-    updateStatusChanged(FrontEnd::UpdateAll);
+    StateManager::addDevice(this);
+    updateStatusChanged(Controller::UpdateAll);
 }
 
 SmartDevice::SmartDevice(const String _name) : type {DeviceType::SmartDevice} {
@@ -30,12 +30,12 @@ const uint8_t SmartDevice::getBrightnessPercent() const {
     return power ? 100 : 0;
 }
 
-void SmartDevice::setPower(const bool _power, const FrontEnd deviceid) {
+void SmartDevice::setPower(const bool _power, const Controller deviceid) {
     updateStatusChanged(deviceid);
     power = _power;
 }
 
-const bool SmartDevice::flipPower(const FrontEnd deviceid) {
+const bool SmartDevice::flipPower(const Controller deviceid) {
     updateStatusChanged(deviceid);
     return power = !power;
 }
@@ -44,12 +44,12 @@ const String SmartDevice::getName() const {
     return name;
 }
 
-const FrontEnd SmartDevice::statusChanged(const unsigned driver_id) {
+const Controller SmartDevice::statusChanged(const unsigned driver_id) {
 
-    if (driver_id >= MAX_DRIVERS) return FrontEnd::None;
+    if (driver_id >= MAX_DRIVERS) return Controller::None;
 
-    FrontEnd temp_status = status_changed_var[driver_id];
-    status_changed_var[driver_id] = FrontEnd::None;
+    Controller temp_status = status_changed_var[driver_id];
+    status_changed_var[driver_id] = Controller::None;
     return temp_status;
 }
 
@@ -66,15 +66,15 @@ const uint8_t BrightnessDevice::getBrightnessPercent() const {
     return brightness;
 }
 
-void BrightnessDevice::setBrightnessPercent(const uint8_t _brightness, const FrontEnd deviceid) {
+void BrightnessDevice::setBrightnessPercent(const uint8_t _brightness, const Controller deviceid) {
     //Serial.println("brightness request: " + String(_brightness) + " from device " + String(static_cast<int>(deviceid)));
     updateStatusChanged(deviceid);
 
     if (_brightness == 0)
-        setPower(PWR_OFF, FrontEnd::None);
+        setPower(PWR_OFF, Controller::None);
 
     else {
-        setPower(PWR_ON, FrontEnd::None);
+        setPower(PWR_ON, Controller::None);
         if (_brightness > 100)
             brightness = 100;
         else
@@ -99,17 +99,17 @@ const String RGBDevice::getRGBStr() const {
     return colorAsHEXStr(r) + colorAsHEXStr(g) + colorAsHEXStr(b);
 }
 
-void RGBDevice::setRGB(const uint32_t rgb, const FrontEnd deviceid) {
+void RGBDevice::setRGB(const uint32_t rgb, const Controller deviceid) {
     updateStatusChanged(deviceid);
 
     uint8_t r = (rgb >> 16) & 0xFF;
     uint8_t g = (rgb >>  8) & 0xFF;
     uint8_t b = rgb & 0xFF; 
-    setRGB(r, g, b, FrontEnd::None);
+    setRGB(r, g, b, Controller::None);
 
 }
 
-void RGBDevice::setRGB(const uint8_t _r, const uint8_t _g, const uint8_t _b, const FrontEnd deviceid) {
+void RGBDevice::setRGB(const uint8_t _r, const uint8_t _g, const uint8_t _b, const Controller deviceid) {
     updateStatusChanged(deviceid);
 
     r = _r;
@@ -123,7 +123,7 @@ const CHSV RGBDevice::getHSV() const {
     return fastled_hsv;
 }
 
-void RGBDevice::setHSV(const CHSV& fastled_hsv, const FrontEnd deviceid) {
+void RGBDevice::setHSV(const CHSV& fastled_hsv, const Controller deviceid) {
     CRGB fastled_rgb;
     hsv2rgb_rainbow(fastled_hsv, fastled_rgb);
     setRGB(fastled_rgb.red, fastled_rgb.green, fastled_rgb.blue, deviceid);
@@ -134,7 +134,7 @@ const uint8_t RGBDevice::getBrightnessPercent() const {
     return fastled_hsv.value * 100 / 255;
 }
 
-void RGBDevice::setBrightnessPercent(const uint8_t _brightness, const FrontEnd deviceid) {
+void RGBDevice::setBrightnessPercent(const uint8_t _brightness, const Controller deviceid) {
     CHSV fastled_hsv = getHSV();
     fastled_hsv.value = _brightness * 255 / 100;
     setHSV(fastled_hsv, deviceid);

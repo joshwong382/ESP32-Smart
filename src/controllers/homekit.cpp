@@ -39,6 +39,7 @@ void HomeSpanAccessory::init(const String name) {
     // Only init once
     if (!HomeSpanInit::getInit()) {
         new HomeSpanInit();
+        homeSpan.setPortNum(4548);
         homeSpan.begin(Category::Lighting, "ESP32-PC-Lighting", "ESP32-PC-Lighting", "ESP32-Smart");
     }
 
@@ -71,9 +72,9 @@ HomeKit_RGB::HomeKit_RGB(RGBDevice* const _internaldev) : Service::LightBulb(), 
 void HomeKit_RGB::loop() {
     if (internalrgbdevice == NULL) return;
 
-    const FrontEnd update_frontend = internalrgbdevice->statusChanged(2);
-    if (update_frontend == FrontEnd::None) return;
-    if (update_frontend == HOMEKIT_FRONTEND) return;
+    const Controller update_controller = internalrgbdevice->statusChanged(2);
+    if (update_controller == Controller::None) return;
+    if (update_controller == HOMEKIT_CONTROLLER) return;
 
     internal_update();
 }
@@ -101,7 +102,7 @@ boolean HomeKit_RGB::update() {
     float new_v = V->getVal<float>();
 
     if (power->updated()) {
-    internalrgbdevice->setPower(power->getNewVal(), HOMEKIT_FRONTEND);
+    internalrgbdevice->setPower(power->getNewVal(), HOMEKIT_CONTROLLER);
     }
 
     if (H->updated()) {
@@ -120,6 +121,6 @@ boolean HomeKit_RGB::update() {
     const uint8_t uint_h = uint8_t(new_h * 255 / 360 - 1);
     const uint8_t uint_s = uint8_t(new_s * 255 / 100);
     const uint8_t uint_v = uint8_t(new_v * 255 / 100);
-    internalrgbdevice->setHSV(CHSV(uint_h, uint_s, uint_v), HOMEKIT_FRONTEND);
+    internalrgbdevice->setHSV(CHSV(uint_h, uint_s, uint_v), HOMEKIT_CONTROLLER);
     return true;
 }

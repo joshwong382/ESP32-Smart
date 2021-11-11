@@ -2,9 +2,9 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <HomeSpan.h>
-#include "smartdevices.h"
-#include "smartsensors.h"
-#include "frontend.h"
+#include "../state/smartdevices.h"
+#include "../state/smartsensors.h"
+#include "../controller.h"
 
 // Manage and Loop HomeSpan Instances
 class HomeSpanInit : public Loopable {
@@ -36,16 +36,16 @@ class HomeKit_RGB : public Loopable, Service::LightBulb {
     void loop();
 
   private:
-    static const FrontEnd HOMEKIT_FRONTEND = FrontEnd::HomeKit;
+    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
     SpanCharacteristic *power;
     SpanCharacteristic *H;
     SpanCharacteristic *S;
     SpanCharacteristic *V;
     RGBDevice* const internalrgbdevice;
 
-    void internal_update();   // Updated via other FrontEnds
+    void internal_update();   // Updated via other Controllers
 
   public:
-    boolean update();         // Updated via HomeKit Frontend
+    boolean update();         // Updated via HomeKit Controller
 
 };

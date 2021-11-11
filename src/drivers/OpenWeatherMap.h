@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "smartsensors.h"
-#include "driver.h"
+#include "../state/smartsensors.h"
+#include "../driver.h"
 #define BASE_URL "http://api.openweathermap.org/data/2.5/weather"
 
 class OpenWeatherMap : public SensorDriver {

@@ -2,8 +2,8 @@
 #include <functional>
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include "smartdevices.h"
-#include "smartsensors.h"
+#include "../state/smartdevices.h"
+#include "../state/smartsensors.h"
 
 #define DEFAULT_PORT 9999
 
@@ -14,7 +14,7 @@ class WebServer {
     AsyncWebServer* webserver = NULL;
     AsyncWebHandler* metrics_handler = NULL;
     String font_url;
-    constexpr static FrontEnd api = FrontEnd::HTTP_API;
+    constexpr static Controller api = Controller::HTTP_API;
 
     const String serial;
     const String model;

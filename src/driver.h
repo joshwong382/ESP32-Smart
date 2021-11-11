@@ -1,6 +1,6 @@
 #pragma once
-#include "smartdevices.h"
-#include "smartsensors.h"
+#include "state/smartdevices.h"
+#include "state/smartsensors.h"
 #include "loopable.h"
 
 class DeviceDriver : public Loopable {
@@ -35,21 +35,21 @@ class SensorDriver : public Loopable {
 };
 
 template<typename T>
-class DriverMonitorFrontEndUpdatable {
+class DriverMonitorControllerUpdatable {
 
     private:
         T value;
         T default_value;
 
     public:
-        DriverMonitorFrontEndUpdatable(T& t);
+        DriverMonitorControllerUpdatable(T& t);
         const T getReset();
         void set(T& t);
 
 };
 
 template<typename T>
-class DriverMonitorFrontEndUpdatableDelegate {
+class DriverMonitorControllerUpdatableDelegate {
 
 
 

@@ -1,8 +1,8 @@
 #pragma once
 
-enum class FrontEnd;
+enum class Controller;
 
-enum class FrontEnd {
+enum class Controller {
             None = 0,
             HomeKit = 1,
             HTTP_API = 2,

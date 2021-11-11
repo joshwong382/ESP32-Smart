@@ -1,9 +1,9 @@
 #pragma once
 #include "loopable.h"
-#include "smartdevices.h"
-#include "smartsensors.h"
+#include "state/smartdevices.h"
+#include "state/smartsensors.h"
 
-class SmartManager {
+class StateManager {
     public:
         static void loopall();
 

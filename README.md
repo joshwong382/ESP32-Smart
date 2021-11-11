@@ -1,11 +1,11 @@
-# ESP32-Lighting
-This ESP32 Arduino program allows multi-platform control of different types of IoT sensors/devices.
+# ArduinoSmart
+This ESP32 ArduinoSmart Library allows multi-platform control of different types of IoT sensors/devices.
 
 ## Setup
 Connect to WiFi using the HomeSpan CLI. More details: [Click Here](https://github.com/HomeSpan/HomeSpan/blob/master/docs/CLI.md).
 
 ## Features
-Control Protocols:
+Controller Protocols:
 - HomeKit
 - HTTP
 
@@ -25,13 +25,16 @@ Special Features:
 - Flash to music via trigger PIN
 - RGB Rainbow mode
 
+## How to use
+TBA :)
+
 ## Newest Changes
 - Refactor HomeKit
 - Refactor Analog and DigitalRGB
 - Add Loopable Class
 
 ## Future Changes
-- Rewrite FrontEnd base class
+- Rewrite Controller base class
 - Change how device capabilities are defined
 - Use GET variables exclusively for HTTP_API
 - Add Alexa control

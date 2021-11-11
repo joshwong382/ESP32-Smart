@@ -1,5 +1,5 @@
 #include "webserver.h"
-#include "SmartManager.h"
+#include "../StateManager.h"
 
 WebServer::WebServer(unsigned port, const String _manufacturer, const String _model, const String _serial) :
             manufacturer {_manufacturer},
@@ -29,7 +29,7 @@ WebServer::~WebServer() {
 
 void WebServer::begin() {
 
-    for (auto it = SmartManager::devices.begin(); it != SmartManager::devices.end(); ++it) {
+    for (auto it = StateManager::devices.begin(); it != StateManager::devices.end(); ++it) {
         createDeviceSpecificWebpages(*it);
     }
     webserver->begin();
@@ -62,14 +62,14 @@ AsyncWebHandler& WebServer::setPromPage() {
         String html = "# Prometheus Metrics";
 
         // Smart Devices
-        for (auto it = SmartManager::devices.begin(); it != SmartManager::devices.end(); ++it) {
+        for (auto it = StateManager::devices.begin(); it != StateManager::devices.end(); ++it) {
             const String name = (*it)->getName();
             const String brightness = String((*it)->getBrightnessPercent());
             html += "\n" + name + " " + brightness;
         }
 
         // Smart Sensors
-        for (auto it = SmartManager::sensors.begin(); it != SmartManager::sensors.end(); ++it) {
+        for (auto it = StateManager::sensors.begin(); it != StateManager::sensors.end(); ++it) {
             switch ((*it)->type) {
                 case SensorTypes::Weather: {
                     Weather *weather_dev = (Weather*) *it;
@@ -97,7 +97,7 @@ AsyncWebHandler& WebServer::setRootPage() {
         response_html += "<body><table style='font-size: 18px;'>";
 
         // Loop through all Smart Devices
-        for (auto devices_it = SmartManager::devices.begin(); devices_it != SmartManager::devices.end(); ++devices_it) {
+        for (auto devices_it = StateManager::devices.begin(); devices_it != StateManager::devices.end(); ++devices_it) {
             const String name = (*devices_it)->getName();
             const bool pwr = (*devices_it)->getPower();
 
@@ -154,7 +154,7 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
                     char color_arr[7];
                     color.toCharArray(color_arr, 7);
                     uint32_t rgb = strtol(color_arr, NULL, 16);
-                    rgb_dev->setRGB(rgb, FrontEnd::HTTP_API);
+                    rgb_dev->setRGB(rgb, Controller::HTTP_API);
                 }
             }
 
@@ -164,13 +164,13 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
                 if (request->hasParam("brightness")) {
                     brightness = request->getParam("brightness")->value().toInt();
                     if (brightness >= 0 || brightness <= 100) {
-                        brightness_dev->setBrightnessPercent(brightness, FrontEnd::HTTP_API);
+                        brightness_dev->setBrightnessPercent(brightness, Controller::HTTP_API);
                     }
                 }
             }
 
             default:
-                device->setPower(PWR_ON, FrontEnd::HTTP_API);
+                device->setPower(PWR_ON, Controller::HTTP_API);
         }
 
         AsyncWebServerResponse *response = request->beginResponse(302);
@@ -197,7 +197,7 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
             });
 
             setWebPageRaw(base_url + "off", HTTP_GET, [device](AsyncWebServerRequest *request) {
-                device->setPower(PWR_OFF, FrontEnd::HTTP_API);
+                device->setPower(PWR_OFF, Controller::HTTP_API);
                 request->redirect("/");
             });
 

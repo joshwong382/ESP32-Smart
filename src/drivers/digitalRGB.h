@@ -1,8 +1,8 @@
 #pragma once
 #include <FastLED.h>
-#include "smartdevices.h"
-#include "smartsensors.h"
-#include "driver.h"
+#include "../state/smartdevices.h"
+#include "../state/smartsensors.h"
+#include "../driver.h"
 
 // ESP32 ONLY!
 // Add #ifdef esp32 specific stuff
