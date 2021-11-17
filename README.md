@@ -29,7 +29,7 @@ Special Features:
 TBA :)
 
 ## Newest Changes
-- Refactor HomeKit
+- Refactor HomeKit because it's so ugly
 - Refactor Analog and DigitalRGB
 - Add Loopable Class
 

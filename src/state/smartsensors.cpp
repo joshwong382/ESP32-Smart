@@ -1,14 +1,14 @@
+#include <WiFi.h>
 #include "smartsensors.h"
 #include "../StateManager.h"
-#include <WiFi.h>
 
 SmartSensorBase::SmartSensorBase(const String _name) :
             name {_name},
-            type {SensorTypes::SmartSensorBase} {
+            type {SensorType::SmartSensorBase} {
     constructor();
 }
 
-SmartSensorBase::SmartSensorBase(const String _name, const SensorTypes _type) :
+SmartSensorBase::SmartSensorBase(const String _name, const SensorType _type) :
             name {_name},
             type {_type} {
     constructor();
@@ -49,7 +49,7 @@ void SmartSensorBase::setExpirySeconds(const unsigned long expiry) {
     expiry_s = expiry;
 } 
 
-Weather::Weather(const String _name) : SmartSensorBase(_name, SensorTypes::Weather) {
+Weather::Weather(const String _name) : SmartSensorBase(_name, SensorType::Weather) {
     temp = WEATHER_UNDEFINED;
     humid = WEATHER_UNDEFINED;
 }

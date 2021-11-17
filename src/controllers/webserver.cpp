@@ -71,7 +71,7 @@ AsyncWebHandler& WebServer::setPromPage() {
         // Smart Sensors
         for (auto it = StateManager::sensors.begin(); it != StateManager::sensors.end(); ++it) {
             switch ((*it)->type) {
-                case SensorTypes::Weather: {
+                case SensorType::Weather: {
                     Weather *weather_dev = (Weather*) *it;
                     const String name = weather_dev->getName();
                     const double temp = weather_dev->getTemp();

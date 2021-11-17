@@ -9,7 +9,7 @@
 class SmartSensorBase;
 class Weather;
 
-enum class SensorTypes {
+enum class SensorType {
     SmartSensorBase,
     Weather
 };
@@ -17,7 +17,7 @@ enum class SensorTypes {
 class SmartSensorBase {
 
     public:
-        const SensorTypes type;
+        const SensorType type;
         
         SmartSensorBase(const String _name);
         const String getName() const;
@@ -34,7 +34,7 @@ class SmartSensorBase {
         unsigned long expiry_s;
         unsigned failure_count;
 
-        SmartSensorBase(const String _name, const SensorTypes _type);
+        SmartSensorBase(const String _name, const SensorType _type);
 
     private:
         void constructor();
@@ -44,8 +44,12 @@ class Weather : public SmartSensorBase {
 
     public:
         Weather(const String _name);
+
+        // Get current data
         const double getTemp() const;
         const double getHumidity() const;
+
+        // Set current data
         void setTemp(const double _temp);           // failure_count resets if setTemp succeeds. It ignores setHumidity.
         void setHumidity(const double _humid);
         const bool isExpired() const;
@@ -54,14 +58,3 @@ class Weather : public SmartSensorBase {
         double temp;
         double humid;
 };
-
-// Move to own file
-/*
-class DHT22 : public Weather {
-
-    public:
-        DHT22();
-        void loop();
-        void update();
-};
-*/

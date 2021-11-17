@@ -29,6 +29,23 @@ class HomeSpanAccessory : public SpanAccessory {
 
 };
 
+class HomeKit_Switch : public Loopable, Service::Switch {
+
+  public:
+    HomeKit_Switch(SmartDevice* const _dev);
+    void loop();
+
+  private:
+    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    SpanCharacteristic *power;
+    SmartDevice* const dev;
+    void internal_update();
+
+  public:
+    bool update();
+
+};
+
 class HomeKit_RGB : public Loopable, Service::LightBulb {
 
   public:
@@ -42,10 +59,37 @@ class HomeKit_RGB : public Loopable, Service::LightBulb {
     SpanCharacteristic *S;
     SpanCharacteristic *V;
     RGBDevice* const internalrgbdevice;
-
     void internal_update();   // Updated via other Controllers
 
   public:
-    boolean update();         // Updated via HomeKit Controller
+    bool update();         // Updated via HomeKit Controller
+
+};
+
+class HomeKit_Temp : public Loopable, Service::TemperatureSensor {
+
+  public:
+    HomeKit_Temp(Weather* const _internaldev);
+    void loop();
+
+  private:
+    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    SpanCharacteristic *temp;
+    Weather* const dev;
+    void internal_update();
+
+};
+
+class HomeKit_Humidity : public Loopable, Service::HumiditySensor {
+
+  public:
+    HomeKit_Humidity(Weather* const _internaldev);
+    void loop();
+
+  private:
+    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    SpanCharacteristic *humid;
+    Weather* const dev;
+    void internal_update();
 
 };

@@ -3,6 +3,10 @@
 #include "state/smartsensors.h"
 #include "loopable.h"
 
+// Drivers should be stateless
+// Drivers should implement getDev() since dev comes from Superclasses here
+// Poll state in loop() from getDev()
+
 class DeviceDriver : public Loopable {
 
     protected:
@@ -30,8 +34,8 @@ class SensorDriver : public Loopable {
 
     public:
         SensorDriver(SmartSensorBase* _dev);
-        virtual void loop() = 0;
-        virtual void update() = 0;
+        virtual void loop() = 0;                // Should call update() in interval defined in the smartsensor state
+        virtual void update() = 0;              // Update data
 };
 
 template<typename T>
