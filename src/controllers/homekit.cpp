@@ -29,8 +29,10 @@ HomeSpanAccessory::HomeSpanAccessory(SmartDevice* dev) : SpanAccessory() {
         case DeviceType::BrightnessDevice:
         case DeviceType::RGBDevice:
             new HomeKit_RGB((RGBDevice*) dev);
+            break;
         case DeviceType::SmartDevice:
             new HomeKit_Switch((SmartDevice*) dev);
+            break;
         default:
             break;
     }
