@@ -36,7 +36,7 @@ class HomeKit_Switch : public Loopable, Service::Switch {
     void loop();
 
   private:
-    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    static const FrontController HOMEKIT_CONTROLLER = FrontController::HomeKit;
     SpanCharacteristic *power;
     SmartDevice* const dev;
     void internal_update();
@@ -53,7 +53,7 @@ class HomeKit_RGB : public Loopable, Service::LightBulb {
     void loop();
 
   private:
-    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    static const FrontController HOMEKIT_CONTROLLER = FrontController::HomeKit;
     SpanCharacteristic *power;
     SpanCharacteristic *H;
     SpanCharacteristic *S;
@@ -62,7 +62,7 @@ class HomeKit_RGB : public Loopable, Service::LightBulb {
     void internal_update();   // Updated via other Controllers
 
   public:
-    bool update();         // Updated via HomeKit Controller
+    bool update();         // Updated via HomeKit FrontController
 
 };
 
@@ -73,7 +73,7 @@ class HomeKit_Temp : public Loopable, Service::TemperatureSensor {
     void loop();
 
   private:
-    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    static const FrontController HOMEKIT_CONTROLLER = FrontController::HomeKit;
     SpanCharacteristic *temp;
     Weather* const dev;
     void internal_update();
@@ -87,7 +87,7 @@ class HomeKit_Humidity : public Loopable, Service::HumiditySensor {
     void loop();
 
   private:
-    static const Controller HOMEKIT_CONTROLLER = Controller::HomeKit;
+    static const FrontController HOMEKIT_CONTROLLER = FrontController::HomeKit;
     SpanCharacteristic *humid;
     Weather* const dev;
     void internal_update();

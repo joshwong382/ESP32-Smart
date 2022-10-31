@@ -29,11 +29,11 @@ class SmartDevice {
     protected:
         String name;
         bool power;
-        Controller status_changed_var[MAX_DRIVERS];
+        FrontController status_changed_var[MAX_DRIVERS];
 
         SmartDevice(const String _name, const DeviceType _type);
         SmartDevice();
-        void updateStatusChanged(const Controller deviceid);
+        void updateStatusChanged(const FrontController deviceid);
 
     private:
         void constructor(const String& _name);
@@ -44,10 +44,10 @@ class SmartDevice {
         SmartDevice(const String _name);
         const bool getPower() const;
         virtual const uint8_t getBrightnessPercent() const;
-        void setPower(const bool _power, const Controller deviceid);      // which Controller triggered the change
-        const bool flipPower(const Controller deviceid);
+        void setPower(const bool _power, const FrontController deviceid);      // which FrontController triggered the change
+        const bool flipPower(const FrontController deviceid);
         const String getName() const;
-        const Controller statusChanged(const unsigned driver_id);
+        const FrontController statusChanged(const unsigned driver_id);
         
 };
 
@@ -60,7 +60,7 @@ class BrightnessDevice : public SmartDevice {
         BrightnessDevice(const String _name);
 
         virtual const uint8_t getBrightnessPercent() const;
-        virtual void setBrightnessPercent(const uint8_t _brightness, const Controller deviceid);
+        virtual void setBrightnessPercent(const uint8_t _brightness, const FrontController deviceid);
 
     private:
         uint8_t brightness;
@@ -75,12 +75,12 @@ class RGBDevice : public BrightnessDevice {
 
         const uint32_t getRGB() const;
         const String getRGBStr() const;
-        void setRGB(const uint8_t _r, const uint8_t _g, const uint8_t _b, const Controller deviceid);
-        void setRGB(const uint32_t rgb, const Controller deviceid);
+        void setRGB(const uint8_t _r, const uint8_t _g, const uint8_t _b, const FrontController deviceid);
+        void setRGB(const uint32_t rgb, const FrontController deviceid);
         const CHSV getHSV() const;
-        void setHSV(const CHSV& fastled_hsv, const Controller deviceid);
+        void setHSV(const CHSV& fastled_hsv, const FrontController deviceid);
         const uint8_t getBrightnessPercent() const;
-        void setBrightnessPercent(const uint8_t _brightness, const Controller deviceid);
+        void setBrightnessPercent(const uint8_t _brightness, const FrontController deviceid);
 
     private:
         uint8_t r;

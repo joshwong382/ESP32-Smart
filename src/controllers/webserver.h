@@ -14,7 +14,7 @@ class WebServer {
     AsyncWebServer* webserver = NULL;
     AsyncWebHandler* metrics_handler = NULL;
     String font_url;
-    constexpr static Controller api = Controller::HTTP_API;
+    constexpr static FrontController api = FrontController::HTTP_API;
 
     const String serial;
     const String model;

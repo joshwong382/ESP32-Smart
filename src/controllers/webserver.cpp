@@ -134,7 +134,7 @@ AsyncWebHandler& WebServer::setWebPage(String uri, const String content_type, st
 void WebServer::sendResponse(AsyncWebServerRequest* request, const String content, const String content_type) const {
     AsyncWebServerResponse *response = request->beginResponse(200, content_type, content);
     response->addHeader("Serial", "NodeMCU 1.0");
-    response->addHeader("Model", "PC RGB Controller");
+    response->addHeader("Model", "PC RGB FrontController");
     response->addHeader("Manufacturer", "C.H.J. WONG");
     request->send(response);
 }
@@ -154,7 +154,7 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
                     char color_arr[7];
                     color.toCharArray(color_arr, 7);
                     uint32_t rgb = strtol(color_arr, NULL, 16);
-                    rgb_dev->setRGB(rgb, Controller::HTTP_API);
+                    rgb_dev->setRGB(rgb, FrontController::HTTP_API);
                 }
             }
 
@@ -164,13 +164,13 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
                 if (request->hasParam("brightness")) {
                     brightness = request->getParam("brightness")->value().toInt();
                     if (brightness >= 0 || brightness <= 100) {
-                        brightness_dev->setBrightnessPercent(brightness, Controller::HTTP_API);
+                        brightness_dev->setBrightnessPercent(brightness, FrontController::HTTP_API);
                     }
                 }
             }
 
             default:
-                device->setPower(PWR_ON, Controller::HTTP_API);
+                device->setPower(PWR_ON, FrontController::HTTP_API);
         }
 
         AsyncWebServerResponse *response = request->beginResponse(302);
@@ -197,7 +197,7 @@ void WebServer::createDeviceSpecificWebpages(SmartDevice* device) {
             });
 
             setWebPageRaw(base_url + "off", HTTP_GET, [device](AsyncWebServerRequest *request) {
-                device->setPower(PWR_OFF, Controller::HTTP_API);
+                device->setPower(PWR_OFF, FrontController::HTTP_API);
                 request->redirect("/");
             });
 

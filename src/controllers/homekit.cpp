@@ -90,8 +90,8 @@ HomeKit_Switch::HomeKit_Switch(SmartDevice* const _dev) : Service::Switch(), dev
 void HomeKit_Switch::loop() {
     if (dev == NULL) return;
 
-    const Controller update_controller = dev->statusChanged(2);
-    if (update_controller == Controller::None) return;
+    const FrontController update_controller = dev->statusChanged(2);
+    if (update_controller == FrontController::None) return;
     if (update_controller == HOMEKIT_CONTROLLER) return;
 
     internal_update();
@@ -129,8 +129,8 @@ HomeKit_RGB::HomeKit_RGB(RGBDevice* const _internaldev) : Service::LightBulb(), 
 void HomeKit_RGB::loop() {
     if (internalrgbdevice == NULL) return;
 
-    const Controller update_controller = internalrgbdevice->statusChanged(2);
-    if (update_controller == Controller::None) return;
+    const FrontController update_controller = internalrgbdevice->statusChanged(2);
+    if (update_controller == FrontController::None) return;
     if (update_controller == HOMEKIT_CONTROLLER) return;
 
     internal_update();
